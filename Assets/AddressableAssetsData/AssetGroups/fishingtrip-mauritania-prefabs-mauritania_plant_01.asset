@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: fishingtrip-mauritania-prefabs-mauritania_plant_01
+  m_EditorClassIdentifier: 
+  m_GroupName: fishingtrip-mauritania-prefabs-mauritania_plant_01
+  m_GUID: cf7b7e7cf88cc814fa22231391064930
+  m_SerializeEntries:
+  - m_GUID: 9116ae3ed54f176408083e9aa8cd357b
+    m_Address: Assets/Art/Mauritania/Prefabs/mauritania_plant_01.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: fa3724cca9fe3ab4fa6267aebedb49d7, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: c58b0ba021a4aaa40ba0fa3bf4d61748, type: 2}
+    - {fileID: 11400000, guid: ef2f3fa7db0892847a69ce2d06ae4c62, type: 2}

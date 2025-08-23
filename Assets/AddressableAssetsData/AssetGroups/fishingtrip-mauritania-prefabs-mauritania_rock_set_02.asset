@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: fishingtrip-mauritania-prefabs-mauritania_rock_set_02
+  m_EditorClassIdentifier: 
+  m_GroupName: fishingtrip-mauritania-prefabs-mauritania_rock_set_02
+  m_GUID: 09410fba1dcddad459a25e50e3558a46
+  m_SerializeEntries:
+  - m_GUID: 278c0478a35a9bf4eaae05cd73ca6a61
+    m_Address: Assets/Art/Mauritania/Prefabs/mauritania_rock_set_02.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: fa3724cca9fe3ab4fa6267aebedb49d7, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: d7e75ae23ec17cb4b8d1b9f1732ce422, type: 2}
+    - {fileID: 11400000, guid: b7aaf007f73481b41b782185343a5754, type: 2}
