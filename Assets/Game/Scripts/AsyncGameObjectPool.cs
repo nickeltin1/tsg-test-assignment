@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -39,7 +40,7 @@ namespace Game.Scripts
             var result = new GameObject[count];
             var remainingCount = count;
             var i = 0;
-            while (_queue.TryDequeue(out var cachedGameObject))
+            while (_queue.TryDequeue(out var cachedGameObject) && remainingCount > 0)
             {
                 result[i] = cachedGameObject;
                 cachedGameObject.gameObject.SetActive(true);
@@ -80,9 +81,9 @@ namespace Game.Scripts
         /// Not required to be async, but to keep consisted style and maybe spread out looping of big batches
         /// lets at least make it partially async
         /// </summary>
-        public async Task ReleaseBatch(GameObject[] gameObjects)
+        public async Task ReleaseBatch(IList<GameObject> gameObjects)
         {
-            for (var i = 0; i < gameObjects.Length; i++)
+            for (var i = 0; i < gameObjects.Count; i++)
             {
                 var go = gameObjects[i];
                 go.SetActive(false);
