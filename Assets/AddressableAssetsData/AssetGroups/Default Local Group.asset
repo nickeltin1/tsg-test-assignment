@@ -14,7 +14,157 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_GroupName: Default Local Group
   m_GUID: 207323fdaa505394782e2f1e7b869442
-  m_SerializeEntries: []
+  m_SerializeEntries:
+  - m_GUID: 02356ea6e7ecccb41afb8a1e16932757
+    m_Address: Assets/Game/Maps/map1.txt
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - maps
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0242285629546524ca6504dfbe15018f
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration8.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 06f8d92d6238efc4e9227935859dd08a
+    m_Address: Assets/Game/Prefabs/Water.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - environment/water
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1af9b2788bfa9764ea008ff45c89f0db
+    m_Address: Assets/Game/Prefabs/Tiles/Tile4.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/ground
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 20c3a2065209daa4fb29ad443f7335cb
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration1.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 27933b5b63bbdf44a9cd0ee09589db59
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration7.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2d5c2b272708aea4f9b17a0da2030452
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration13.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5149c84a86de2d442953581166fc2347
+    m_Address: Assets/Game/Prefabs/Tiles/Tile1.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/ground
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 54e15a2845e15dc4f9ea4ec2048fcf74
+    m_Address: Assets/Game/Prefabs/Tiles/TileWater.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/water
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 69d03efbcb494cb45ac02f7fd71d398b
+    m_Address: Assets/Game/Prefabs/Tiles/Tile5.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/ground
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6a5d80f86a5e0574191ee185dad9ec02
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration3.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6e46230fd63d7a346bc1df9a8a1f56f6
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration4.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 76edf08c58421df4b81a2a74bf3150d4
+    m_Address: Assets/Game/Prefabs/Tiles/Tile2.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/ground
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8d2184dc2c462504dba14bd1aac690da
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration5.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9dd465d4fa6cb96448cb966d1cbb0c08
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration10.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a36fcfa067176be499d64815bc9dc398
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration2.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a7e12963652f0b644a83d5ffcc9b31c9
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration9.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a8c6fc9831455e8449e35a645a4693ee
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration11.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ad9cc07e417fa504fae5d48dd9d0aa74
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration12.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b160cce14908fef48bee9a1e299d955c
+    m_Address: Assets/Game/Prefabs/Tiles/Tile3.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/ground
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: be5aedbcb313e3940ad8425bfa9f53d2
+    m_Address: Assets/Game/Prefabs/Tiles/Tile7.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/ground
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c853e9fe93b391b4da5226388c26f63a
+    m_Address: Assets/Game/Prefabs/Decorations/TileDecoration6.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/decoration
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dfac9bee941a63541800950ce1ed7f2d
+    m_Address: Assets/Game/Maps/maze.txt
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - maps
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e6400212c3a7197499e742ab3ab2e34b
+    m_Address: Assets/Game/Prefabs/Tiles/Tile6.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - tiles/ground
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e9f729fc2ba63c8478a9ccb2391c9a31
+    m_Address: Assets/Game/Prefabs/Boat.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - entities/boat
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: fa3724cca9fe3ab4fa6267aebedb49d7, type: 2}
   m_SchemaSet:

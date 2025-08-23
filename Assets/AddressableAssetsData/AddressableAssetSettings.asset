@@ -15,7 +15,7 @@ MonoBehaviour:
   m_DefaultGroup: 207323fdaa505394782e2f1e7b869442
   m_currentHash:
     serializedVersion: 2
-    Hash: 2b574cd3f1284a180906a0b967e81ffb
+    Hash: 00000000000000000000000000000000
   m_OptimizeCatalogSize: 0
   m_BuildRemoteCatalog: 0
   m_CatalogRequestsTimeout: 0
@@ -99,6 +99,12 @@ MonoBehaviour:
   m_LabelTable:
     m_LabelNames:
     - default
+    - tiles/decoration
+    - tiles/ground
+    - tiles/water
+    - entities/boat
+    - environment/water
+    - maps
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: 5887437640f826540820fe5991d81fb6, type: 2}
