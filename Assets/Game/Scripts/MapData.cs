@@ -25,36 +25,50 @@ namespace Game.Scripts
         /// </summary>
         public struct Tile
         {
+            public readonly MapData Map;
+            
             public readonly TileType Type;
-            public int TileIndex;
-            public int DecorationIndex;
+            
+            public readonly int X;
+            public readonly int Y;
+            public readonly int Index;
+            
+            public int WaterPrefabIndex;
+            public int GroundPrefabIndex;
+            public int DecorationPrefabIndex;
         
-            public Tile(TileType type)
+            public Tile(MapData map, TileType type, int x, int y, int index)
             {
+                Map = map;
                 Type = type;
-                TileIndex = -1;
-                DecorationIndex = -1;
+                X = x;
+                Y = y;
+                Index = index;
+                DecorationPrefabIndex = -1;
+                WaterPrefabIndex = -1;
+                GroundPrefabIndex = -1;
             }
         }
         
-        public readonly int Width;
-        public readonly int Height;
+        public int Width { get; private set; }
+        public int Height { get; private set; }
         public int Length => Width * Height;
         
         /// <summary>
         /// Using 1D array with 2D indexing as this is the most performant approach
         /// </summary>
-        private readonly List<Tile> _tiles;
+        private List<Tile> _tiles;
         
         public IReadOnlyList<Tile> Tiles => _tiles;
 
         public readonly string Name;
         
-        private MapData(int width, List<Tile> tiles, string name)
+        private MapData(string name) => Name = name;
+
+        private void Init(int width, List<Tile> tiles)
         {
             Width = width;
             _tiles = tiles;
-            Name = name;
             Height = tiles.Count / width;
         }
 
@@ -77,6 +91,51 @@ namespace Game.Scripts
         
         public Tile this[int x, int y] => GetTile(x, y);
         public Tile this[int index] => _tiles[index];
+        
+        public void InitRandomTilesState(AddressableAssets.Assets assets, int seed, float decorChance = 0.3f)
+        {
+            var waterCount = assets.WaterTiles.LoadedObjects.Count;
+            var groundCount = assets.GroundTiles.LoadedObjects.Count;
+            var decorCount = assets.Decorations.LoadedObjects.Count;
+
+            for (var i = 0; i < _tiles.Count; i++)
+            {
+                var tile = _tiles[i];
+                var hash = Hash(seed, tile.X, tile.Y);
+
+                if (tile.Type == TileType.Water)
+                {
+                    tile.WaterPrefabIndex = (int)(hash % (uint)waterCount);
+                }
+                else
+                {
+                    tile.GroundPrefabIndex = (int)(hash % (uint)groundCount);
+
+                    // deterministically choose if decor appears
+                    if (decorCount > 0 && ((hash >> 8) % 10000) / 10000f < decorChance)
+                    {
+                        tile.DecorationPrefabIndex = (int)((hash >> 16) % (uint)decorCount);
+                    }
+                }
+
+                _tiles[i] = tile;
+            }
+        }
+
+        private static uint Hash(int seed, int x, int y)
+        {
+            unchecked
+            {
+                var h = (uint)seed;
+                h ^= (uint)(x * 0x9E3779B1);
+                h = (h << 13) | (h >> 19);
+                h ^= (uint)(y * 0x85EBCA6B);
+                h ^= h >> 16;
+                h *= 0x7FEB352D;
+                h ^= h >> 15;
+                return h;
+            }
+        }
 
         /// <summary>
         /// Reads text file line by line and filling the map data.
@@ -90,7 +149,8 @@ namespace Game.Scripts
             var width = 0;
             
             // Reading row by row to spread out synchronous parts
-            var rowCount = 0;
+            var y = 0;
+            var map = new MapData(name);
             while (reader.Peek() != -1)
             {
                 var rowString = await reader.ReadLineAsync();
@@ -98,23 +158,27 @@ namespace Game.Scripts
                 // First row defines the grid width
                 if (width <= 0) width = rowString.Length;
                 
-                if (width != rowString.Length) throw new Exception($"Inconsistent rows lenght. First row width {width}, row {rowCount} width {rowString.Length}");
-                
-                foreach (var character in rowString)
+                if (width != rowString.Length) throw new Exception($"Inconsistent rows lenght. First row width {width}, row {y} width {rowString.Length}");
+
+                for (var x = 0; x < rowString.Length; x++)
                 {
-                    var tile = ParseTile(character);
+                    var character = rowString[x];
+                    var tileType = ParseTile(character);
+                    var tile = new Tile(map, tileType, x, y, y * width + x);
                     tiles.Add(tile);
                 }
-                rowCount++;
+
+                y++;
             }
 
-            return new MapData(width, tiles, name);
+            map.Init(width, tiles);
+            return map;
         }
 
         /// <summary>
-        /// Considering that single tile state encapsulated in single character
+        /// Considering that single tile state encapsulated in single character, and holds only tile type for now
         /// </summary>
-        public static Tile ParseTile(char character)
+        public static TileType ParseTile(char character)
         {
             var type = TileType.Water;
             switch (character)
@@ -129,7 +193,7 @@ namespace Game.Scripts
                     throw new Exception($"Unsupported tile type character {character}");
             }
 
-            return new Tile(type);
+            return type;
         }
     }
 }
