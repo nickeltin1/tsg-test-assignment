@@ -44,13 +44,13 @@ namespace Game.Scripts
                 
                 using (new StopwatchScope("BuildingMap"))
                 {
-                    BuildMap();
+                    await BuildMap();
                 }
             }
         }
 
         [ContextMenu("Cancel map generation")]
-        private async void CancelMapGeneration()
+        private void CancelMapGeneration()
         {
             Debug.Log("Canceling map generation");
             _cancellationTokenSource?.Cancel();
@@ -65,7 +65,7 @@ namespace Game.Scripts
         }
             
         [ContextMenu("Build Map")]
-        private async void BuildMap()
+        private async Task BuildMap()
         {
             CancelMapGeneration();
             using (new StopwatchScope("RebuildingMap"))
