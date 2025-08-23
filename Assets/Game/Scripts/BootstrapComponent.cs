@@ -5,7 +5,7 @@ using UnityEngine.AddressableAssets;
 
 namespace Game.Scripts
 {
-    public class Bootstrap : MonoBehaviour
+    public class BootstrapComponent : MonoBehaviour
     {
         [SerializeField] private AddressableAssets.Assets _assets;
         [SerializeField] private MapComponent _map;
@@ -20,6 +20,7 @@ namespace Game.Scripts
         {
             using (new StopwatchScope("Bootstrap"))
             {
+                // Not necessary to explicitly init addressables but to keep init process clear lets do that
                 using (new StopwatchScope("Addressables.Init"))
                 {
                     var handle = Addressables.InitializeAsync();

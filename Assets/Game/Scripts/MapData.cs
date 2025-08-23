@@ -26,10 +26,14 @@ namespace Game.Scripts
         public struct Tile
         {
             public readonly TileType Type;
+            public int TileIndex;
+            public int DecorationIndex;
         
             public Tile(TileType type)
             {
                 Type = type;
+                TileIndex = -1;
+                DecorationIndex = -1;
             }
         }
         

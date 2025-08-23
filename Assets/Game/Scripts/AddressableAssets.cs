@@ -11,6 +11,10 @@ using Random = UnityEngine.Random;
 
 namespace Game.Scripts
 {
+    /// <summary>
+    /// Provides handles for all used game assets as addressables.
+    /// Call <see cref="LoadAsync"/> to load all assets in parallel.
+    /// </summary>
     public static class AddressableAssets
     {
         /// <summary>
@@ -63,10 +67,7 @@ namespace Game.Scripts
         }
 
         [Serializable]
-        public class GameObjectsCollection : AssetsCollection<GameObject>
-        {
-            
-        }
+        public class GameObjectsCollection : AssetsCollection<GameObject> { }
         
         /// <summary>
         /// Loads maps as text assets, additionally parses the text assets into
@@ -120,6 +121,10 @@ namespace Game.Scripts
             [InlineProperty] public Asset<GameObject> Boat;
             [InlineProperty] public Asset<GameObject> Water;
             
+            /// <summary>
+            /// Can be done with reflections, but keeping it simple for now
+            /// Don't forget to add <see cref="ILoadableAsset"/> if any new is defined
+            /// </summary>
             public IEnumerator<ILoadableAsset> GetEnumerator()
             {
                 yield return WaterTiles;
