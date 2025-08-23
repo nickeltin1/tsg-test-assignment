@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.Pool;
 
 namespace Game.Scripts
 {
@@ -10,6 +11,7 @@ namespace Game.Scripts
     {
         [SerializeField] private AddressableAssets.Assets _assets;
         [SerializeField] private MapComponent _map;
+        [SerializeField] private MapStreamerCircle _mapStreamer;
         [SerializeField] private string _mapName;
         [SerializeField, Range(0,1)] private float _decorationSpawnChance = 0.3f;
         [SerializeField] private int _seed;
@@ -41,10 +43,13 @@ namespace Game.Scripts
                 
                 _mapData = _assets.Maps.FindMapByName(_mapName);
                 _mapData.InitRandomTilesState(_assets, _seed, _decorationSpawnChance);
+
+                var player = Instantiate(_assets.Boat.LoadedObject).GetComponent<Player>();
                 
                 using (new StopwatchScope("BuildingMap"))
                 {
-                    await BuildMap();
+                    _mapStreamer.Init(_mapData, _assets, player.transform);
+                    // await BuildMap();
                 }
             }
         }
