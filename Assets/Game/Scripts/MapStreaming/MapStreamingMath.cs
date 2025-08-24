@@ -52,11 +52,8 @@ namespace Game.Scripts
 
             return new RectInt(0, 0, 0, 0);
         }
-
-        /// <summary>
-        /// Emits up to 4 non-overlapping strips that cover (whole \ cutout).
-        /// </summary>
-        public static void BuildDifferenceAreas(RectInt whole, RectInt cutout, List<RectInt> outRects)
+        
+        private static void BuildDifferenceAreas(RectInt whole, RectInt cutout, List<RectInt> outRects)
         {
             if (whole.width <= 0 || whole.height <= 0)
                 return;

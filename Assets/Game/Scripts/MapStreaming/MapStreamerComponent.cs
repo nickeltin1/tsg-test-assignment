@@ -24,7 +24,7 @@ namespace Game.Scripts
         [Tooltip("In tiles")]
         [SerializeField] private int _spawnRadius = 30;
 
-        private bool _inited;
+        private bool _initialized;
         
         private MapData _map;
         private AddressableAssets.Assets _assets;
@@ -56,13 +56,13 @@ namespace Game.Scripts
             _addedAreas = new List<RectInt>();
             _removedAreas = new List<RectInt>();
 
-            _inited = true;
+            _initialized = true;
             // _loop = StreamLoop();
         }
 
         private void Update()
         {
-            if (!_inited) return;
+            if (!_initialized) return;
             
             // Here we have a difference between rects, that determines what tiles should be loaded and unloaded
             _lastStreamArea = _currentStreamArea;
