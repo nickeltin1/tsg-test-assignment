@@ -1,10 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Game.Scripts
 {
-    public sealed class MapStreamerGenerated : MonoBehaviour
+    [Obsolete]
+    public sealed class MapStreamerOld : MonoBehaviour
     {
         private struct TileInstance
         {

@@ -16,8 +16,6 @@ namespace Game.Scripts
     {
         private static readonly Vector3[] _tempVectorArray = new Vector3[1];
         private static readonly Quaternion[] _tempQuaternionArray = new Quaternion[1];
-        // private static readonly GameObject[] _tempGameObjectArray = new GameObject[1];
-        
         
         private readonly GameObject _source;
         private readonly Transform _root;

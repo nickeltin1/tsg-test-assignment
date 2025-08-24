@@ -267,7 +267,7 @@ namespace Game.Scripts
             {
                 var spawnedGameObject = instances[i];
 #if UNITY_EDITOR
-                spawnedGameObject.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
+                spawnedGameObject.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector | HideFlags.NotEditable;
 #endif
                 var spawnRequest = spawnRequests[i];
                 
