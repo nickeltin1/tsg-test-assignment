@@ -475,7 +475,6 @@ GameObject:
   m_Component:
   - component: {fileID: 650436095}
   - component: {fileID: 650436097}
-  - component: {fileID: 650436096}
   - component: {fileID: 650436098}
   m_Layer: 0
   m_Name: Map
@@ -500,22 +499,6 @@ Transform:
   - {fileID: 969641733}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &650436096
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 650436094}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 94199f6f2ef94d4f95937efae87ab37d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _grid: {fileID: 969641732}
-  _waterParent: {fileID: 1816533013}
-  _groundParent: {fileID: 87964375}
-  _decorParent: {fileID: 984177410}
 --- !u!114 &650436097
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -555,7 +538,7 @@ MonoBehaviour:
         m_SubObjectType: 
         m_SubObjectGUID: 
         m_EditorAssetChanged: 0
-  _map: {fileID: 650436096}
+  _map: {fileID: 0}
   _mapStreamer: {fileID: 650436098}
   _mapName: maze
   _decorationSpawnChance: 0.3
@@ -576,8 +559,7 @@ MonoBehaviour:
   _waterParent: {fileID: 1816533013}
   _groundParent: {fileID: 87964375}
   _decorParent: {fileID: 984177410}
-  _chunkSize: 16
-  _chunkRadius: 2
+  _spawnRadius: 30
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0

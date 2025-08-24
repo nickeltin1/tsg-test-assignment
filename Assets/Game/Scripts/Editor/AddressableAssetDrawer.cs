@@ -21,7 +21,9 @@ namespace Game.Scripts.Editor
                 {
                     var height = EditorGUI.GetPropertyHeight(child, true);
                     var line = new Rect(rect.x, y, rect.width, height);
-                    EditorGUI.PropertyField(line, child, true);
+                    var childLabel =
+                        EditorGUIUtility.TrTextContent(property.displayName + "/" + child.displayName, child.tooltip);
+                    EditorGUI.PropertyField(line, child, childLabel, true);
                     y += height;// + EditorGUIUtility.standardVerticalSpacing;
                 }
             }
@@ -31,7 +33,10 @@ namespace Game.Scripts.Editor
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             var height = EditorGUI.GetPropertyHeight(property, label, true);
-            height -= EditorGUIUtility.singleLineHeight;
+            if (property.isExpanded)
+            {
+                height -= EditorGUIUtility.singleLineHeight;
+            }
             return height;
         }
         

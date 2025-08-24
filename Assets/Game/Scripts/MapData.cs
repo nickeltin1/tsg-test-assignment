@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace Game.Scripts
 {
@@ -32,6 +33,8 @@ namespace Game.Scripts
             public readonly int X;
             public readonly int Y;
             public readonly int Index;
+            
+            public Vector2Int Position => new(X, Y);
             
             public int WaterPrefabIndex;
             public int GroundPrefabIndex;

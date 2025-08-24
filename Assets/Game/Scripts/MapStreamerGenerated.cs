@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Game.Scripts
 {
-    public sealed class MapStreamerComponent : MonoBehaviour
+    public sealed class MapStreamerGenerated : MonoBehaviour
     {
         private struct TileInstance
         {

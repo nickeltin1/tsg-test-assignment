@@ -10,7 +10,7 @@ namespace Game.Scripts
     public class BootstrapComponent : MonoBehaviour
     {
         [SerializeField] private AddressableAssets.Assets _assets;
-        [SerializeField] private MapComponent _map;
+        // [SerializeField] private MapComponent _map;
         [SerializeField] private MapStreamerComponent _mapStreamer;
         [SerializeField] private string _mapName;
         [SerializeField, Range(0,1)] private float _decorationSpawnChance = 0.3f;
@@ -61,27 +61,27 @@ namespace Game.Scripts
             _cancellationTokenSource?.Cancel();
         }
         
-        [ContextMenu("Clear map")]
-        private async void ClearMap()
-        {
-            CancelMapGeneration();
-            Debug.Log("Clearing map");
-            await _map.ClearAsync();
-        }
-            
-        [ContextMenu("Build Map")]
-        private async Task BuildMap()
-        {
-            CancelMapGeneration();
-            using (new StopwatchScope("RebuildingMap"))
-            {
-                //Can clear and instantiate at the same time
-                var tasks = new List<Task>();
-                tasks.Add(_map.ClearAsync());
-                _cancellationTokenSource = new CancellationTokenSource();
-                tasks.Add(_map.BuildAsync(_assets, _mapData, _cancellationTokenSource.Token));
-                await Task.WhenAll(tasks.ToArray());
-            }
-        }
+        // [ContextMenu("Clear map")]
+        // private async void ClearMap()
+        // {
+        //     CancelMapGeneration();
+        //     Debug.Log("Clearing map");
+        //     await _map.ClearAsync();
+        // }
+        //     
+        // [ContextMenu("Build Map")]
+        // private async Task BuildMap()
+        // {
+        //     CancelMapGeneration();
+        //     using (new StopwatchScope("RebuildingMap"))
+        //     {
+        //         //Can clear and instantiate at the same time
+        //         var tasks = new List<Task>();
+        //         tasks.Add(_map.ClearAsync());
+        //         _cancellationTokenSource = new CancellationTokenSource();
+        //         tasks.Add(_map.BuildAsync(_assets, _mapData, _cancellationTokenSource.Token));
+        //         await Task.WhenAll(tasks.ToArray());
+        //     }
+        // }
     }
 }
