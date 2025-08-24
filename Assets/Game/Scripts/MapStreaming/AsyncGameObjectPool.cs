@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -15,7 +16,7 @@ namespace Game.Scripts
     {
         private static readonly Vector3[] _tempVectorArray = new Vector3[1];
         private static readonly Quaternion[] _tempQuaternionArray = new Quaternion[1];
-        private static readonly GameObject[] _tempGameObjectArray = new GameObject[1];
+        // private static readonly GameObject[] _tempGameObjectArray = new GameObject[1];
         
         
         private readonly GameObject _source;
@@ -38,7 +39,21 @@ namespace Game.Scripts
             return task.Result[0];
         }
 
+        public async Task<GameObject[]> GetBatch(int count, Transform parent = null)
+        {
+            var positions = ArrayPool<Vector3>.Shared.Rent(count);
+            var rotations = ArrayPool<Quaternion>.Shared.Rent(count);
+            
+            var instances = await GetBatch(count, positions, rotations, parent);
+            
+            // Not really using this, but whatever
+            ArrayPool<Vector3>.Shared.Return(positions);
+            ArrayPool<Quaternion>.Shared.Return(rotations);
+
+            return instances;
+        }
         
+
         public async Task<GameObject[]> GetBatch(int count, Vector3[] positions, Quaternion[] rotations, Transform parent = null)
         {
             parent ??= _root;
@@ -78,24 +93,25 @@ namespace Game.Scripts
             return result;
         }
 
-        public async Task Release(GameObject go)
+        public void Release(GameObject go)
         {
-            _tempGameObjectArray[0] = go;
-            await ReleaseBatch(_tempGameObjectArray);
+            go.SetActive(false);
+            go.transform.SetParent(_root);
+            _queue.Enqueue(go);
         }
         
         /// <summary>
         /// Not required to be async, but to keep consisted style and maybe spread out looping of big batches
         /// lets at least make it partially async
+        ///
+        /// Not sure if we actually need it
         /// </summary>
+        [Obsolete]
         public async Task ReleaseBatch(IList<GameObject> gameObjects)
         {
             for (var i = 0; i < gameObjects.Count; i++)
             {
-                var go = gameObjects[i];
-                go.SetActive(false);
-                go.transform.SetParent(_root);
-                _queue.Enqueue(go);
+                Release(gameObjects[i]);
                 // Process in batches of 10
                 if (i % 10 == 0) await Task.Yield();
             }

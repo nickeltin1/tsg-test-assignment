@@ -1,11 +1,18 @@
-﻿using UnityEngine;
+﻿#if UNITY_EDITOR
+
+using UnityEngine;
 
 namespace Game.Scripts
 {
     public sealed partial class MapStreamerComponent
     {
+        [Header("Debug")]
+        [Tooltip("Don't know why but its expensive af, turn off for proper")]
+        [SerializeField] private bool _drawGizmos = false;
+        
         private void OnDrawGizmos()
         {
+            if (!_drawGizmos) return; 
             if (_grid == null || _map == null) return;
 
             // full map outline (gray)
@@ -100,3 +107,5 @@ namespace Game.Scripts
         }
     }
 }
+
+#endif

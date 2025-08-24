@@ -79,6 +79,7 @@ namespace Game.Scripts
         /// 2D to 1D conversion
         /// </summary>
         public int XYToIndex(int x, int y) => y * Width + x;
+        public int XYToIndex(Vector2Int position) => XYToIndex(position.x, position.y);
         
         public void IndexToXY(int index, out int x, out int y)
         {
