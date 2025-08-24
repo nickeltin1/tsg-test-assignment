@@ -45,6 +45,14 @@ PrefabInstance:
       value: mauritania_background_water
       objectReference: {fileID: 0}
     - target: {fileID: 5237512340419001157, guid: 9c2b714c05be4b44fb64bc60e69eba3e, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5237512340419001157, guid: 9c2b714c05be4b44fb64bc60e69eba3e, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5237512340419001157, guid: 9c2b714c05be4b44fb64bc60e69eba3e, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}

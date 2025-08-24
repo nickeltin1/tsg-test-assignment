@@ -1,9 +1,9 @@
-﻿using UnityEngine;
+﻿using System.Threading.Tasks;
+using UnityEngine;
 
 namespace Game.Scripts
 {
     public class Player : MonoBehaviour
     {
-        
     }
 }

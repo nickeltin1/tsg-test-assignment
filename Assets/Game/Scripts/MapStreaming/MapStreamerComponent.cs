@@ -69,6 +69,7 @@ namespace Game.Scripts
         private AsyncGameObjectPoolCollection _decorationsPool;
         
         private Task _loop;
+        private GameObject _waterPlane;
         
         private RectInt _currentStreamArea;
         private RectInt _lastStreamArea;
@@ -97,6 +98,19 @@ namespace Game.Scripts
             _activeTiles = new Dictionary<int, TileInstance>();
             
             _loop = StreamLoop();
+            _waterPlane = Instantiate(_assets.Water.LoadedObject);
+        }
+
+        private void Update()
+        {
+            if (_player != null)
+            {
+                var playerPos = _player.position;
+                _waterPlane.transform.position = playerPos;
+            }
+
+            var scale = new Vector3(_spawnRadius * 2, 1, _spawnRadius * 2);
+            _waterPlane.transform.localScale = scale;
         }
 
         private async Task StreamLoop()
