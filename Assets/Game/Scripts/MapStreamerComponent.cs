@@ -6,38 +6,6 @@ namespace Game.Scripts
 {
     public sealed class MapStreamerComponent : MonoBehaviour
     {
-        [Header("Scene Refs")]
-        [SerializeField] private Grid _grid;
-        [SerializeField] private Transform _waterParent;
-        [SerializeField] private Transform _groundParent;
-        [SerializeField] private Transform _decorParent;
-
-        [Header("Streaming")]
-        [SerializeField] private float _worldRadius = 30f; // circle radius around boat (meters)
-
-        private MapData _map;
-        private AddressableAssets.Assets _assets;
-        private Transform _player;
-        
-        
-        private AsyncGameObjectPoolCollection _waterPools;
-        private AsyncGameObjectPoolCollection _groundPools;
-        private AsyncGameObjectPoolCollection _decorPools;
-        
-        private readonly HashSet<int> _tilesToAdd = new();
-        private readonly List<int> _tilesToRemove = new();
-        
-        private readonly Dictionary<AsyncGameObjectPool, List<PendingSpawn>> _pendingByPool = new();
-        private readonly Dictionary<AsyncGameObjectPool, List<GameObject>> _releaseByPool = new();
-        
-        private readonly Stack<List<PendingSpawn>> _pendingSpawnPoolLists = new();
-        private readonly Stack<List<GameObject>> _releaseListCache = new();
-
-        private readonly Dictionary<int, TileInstance> _activeTiles = new();
-
-        private Task _loop;
-        private bool _running;
-
         private struct TileInstance
         {
             public GameObject GroundOrWater;
@@ -54,6 +22,42 @@ namespace Game.Scripts
             public Quaternion Rotation;
             public bool IsDecoration;
         }
+        
+        [Header("Scene Refs")] 
+        [SerializeField] private Grid _grid;
+
+        [SerializeField] private Transform _waterParent;
+        [SerializeField] private Transform _groundParent;
+        [SerializeField] private Transform _decorParent;
+
+        [Header("Streaming")] 
+        [SerializeField] private float _worldRadius = 30f; // circle radius around boat (meters)
+
+        private MapData _map;
+        private AddressableAssets.Assets _assets;
+        private Transform _player;
+
+        // Pools
+        private AsyncGameObjectPoolCollection _waterPools;
+        private AsyncGameObjectPoolCollection _groundPools;
+        private AsyncGameObjectPoolCollection _decorPools;
+
+        // Working sets / caches
+        private readonly HashSet<int> _tilesToAdd = new();
+        private readonly List<int> _tilesToRemove = new();
+
+        private readonly Dictionary<AsyncGameObjectPool, List<PendingSpawn>> _pendingByPool = new();
+        private readonly Dictionary<AsyncGameObjectPool, List<GameObject>> _releaseByPool = new();
+
+        private readonly Stack<List<PendingSpawn>> _pendingSpawnPoolLists = new();
+        private readonly Stack<List<GameObject>> _releaseListCache = new();
+
+        private readonly Dictionary<int, TileInstance> _activeTiles = new();
+
+        private Task _loop;
+        private bool _running;
+
+       
 
         public void Init(MapData map, AddressableAssets.Assets assets, Transform player)
         {
@@ -86,46 +90,60 @@ namespace Game.Scripts
 
         private async Task StepAsync()
         {
-            if (_map == null || _player == null || _grid == null)
-                return;
-            
+            ComputeDesiredTiles(_tilesToAdd);
+            ComputeTilesToRemove(_tilesToAdd, _tilesToRemove);
+            ScheduleReleases(_tilesToRemove);
+            await ExecuteReleasesAsync();
+            ScheduleSpawns(_tilesToAdd);
+            await ExecuteSpawnsAsync();
+        }
+        
+        
+        private void ComputeDesiredTiles(HashSet<int> outDesired)
+        {
+            outDesired.Clear();
+
             var boatPos = _player.position;
-            var cellCenter = _grid.WorldToCell(boatPos);
-            var cx = cellCenter.x;
-            var cy = -cellCenter.y; // map uses (x, -y)
+            var cell = _grid.WorldToCell(boatPos);
+            var cx = cell.x;
+            var cy = -cell.y; // map uses (x, -y)
 
             var cellSize = _grid.cellSize;
-            var cellDiag = Mathf.Max(
-                0.001f,
-                new Vector2(cellSize.x, cellSize.y == 0 ? cellSize.z : cellSize.y).magnitude
-            );
+            var diagVec = new Vector2(cellSize.x, cellSize.y == 0 ? cellSize.z : cellSize.y);
+            var cellDiag = Mathf.Max(0.001f, diagVec.magnitude);
             var rCells = Mathf.CeilToInt(_worldRadius / cellDiag);
+            var r2 = _worldRadius * _worldRadius;
 
-            _tilesToAdd.Clear();
-            for (int y = cy - rCells; y <= cy + rCells; y++)
+            for (var y = cy - rCells; y <= cy + rCells; y++)
             {
                 if ((uint)y >= (uint)_map.Height) continue;
 
-                for (int x = cx - rCells; x <= cx + rCells; x++)
+                for (var x = cx - rCells; x <= cx + rCells; x++)
                 {
                     if ((uint)x >= (uint)_map.Width) continue;
 
-                    var cell = new Vector3Int(x, -y, 0);
-                    var pos  = _grid.CellToWorld(cell);
-                    if ((pos - boatPos).sqrMagnitude > _worldRadius * _worldRadius) continue;
+                    var gridCell = new Vector3Int(x, -y, 0);
+                    var pos = _grid.CellToWorld(gridCell);
+                    if ((pos - boatPos).sqrMagnitude > r2) continue;
 
-                    _tilesToAdd.Add(_map.XYToIndex(x, y));
+                    outDesired.Add(_map.XYToIndex(x, y));
                 }
             }
-            
-            _tilesToRemove.Clear();
+        }
+        
+        private void ComputeTilesToRemove(HashSet<int> desired, List<int> outToRemove)
+        {
+            outToRemove.Clear();
             foreach (var kv in _activeTiles)
-            {
-                if (!_tilesToAdd.Contains(kv.Key)) _tilesToRemove.Add(kv.Key);
-            }
-
+                if (!desired.Contains(kv.Key))
+                    outToRemove.Add(kv.Key);
+        }
+        
+        private void ScheduleReleases(List<int> toRemove)
+        {
             _releaseByPool.Clear();
-            foreach (var idx in _tilesToRemove)
+
+            foreach (var idx in toRemove)
             {
                 var inst = _activeTiles[idx];
 
@@ -137,72 +155,104 @@ namespace Game.Scripts
 
                 _activeTiles.Remove(idx);
             }
+        }
 
-            // Execute releases per pool (tight arrays)
+        private async Task ExecuteReleasesAsync()
+        {
             foreach (var (pool, list) in _releaseByPool)
             {
-                if (pool != null && list.Count > 0)
-                {
-                    try
-                    {
-                        var toRelease = new GameObject[list.Count];
-                        for (var i = 0; i < list.Count; i++) toRelease[i] = list[i];
-                        await pool.ReleaseBatch(toRelease);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        Debug.LogException(ex);
-                    }
-                }
-                list.Clear();
-                _releaseListCache.Push(list);
+                await pool.ReleaseBatch(list);
+                RecycleReleaseList(list);
             }
-            
+        }
+
+        private void AddRelease(AsyncGameObjectPool pool, GameObject go)
+        {
+            if (!_releaseByPool.TryGetValue(pool, out var list))
+            {
+                list = _releaseListCache.Count > 0
+                    ? _releaseListCache.Pop()
+                    : new List<GameObject>(32);
+                _releaseByPool.Add(pool, list);
+            }
+
+            list.Add(go);
+        }
+
+        private void RecycleReleaseList(List<GameObject> list)
+        {
+            list.Clear();
+            _releaseListCache.Push(list);
+        }
+        
+        private void ScheduleSpawns(HashSet<int> desired)
+        {
             _pendingByPool.Clear();
 
-            foreach (var idx in _tilesToAdd)
+            foreach (var idx in desired)
             {
-                if (_activeTiles.ContainsKey(idx)) continue;
+                if (_activeTiles.ContainsKey(idx))
+                    continue;
 
                 _map.IndexToXY(idx, out var x, out var y);
                 var tile = _map[idx];
-                var cell = new Vector3Int(x, -y, 0);
-                var pos  = _grid.CellToWorld(cell);
 
-                var pendingSpawn = new PendingSpawn
+                var pos = _grid.CellToWorld(new Vector3Int(x, -y, 0));
+
+                var baseSpawn = new PendingSpawn
                 {
                     MapIndex = idx,
                     Position = pos,
                     Rotation = Quaternion.identity,
                     IsDecoration = false
                 };
-                
+
                 if (tile.Type == MapData.TileType.Water)
                 {
-                    AddPending(_waterPools[tile.WaterPrefabIndex], pendingSpawn);
+                    AddPending(_waterPools[tile.WaterPrefabIndex], baseSpawn);
                 }
                 else
                 {
-                    AddPending(_groundPools[tile.GroundPrefabIndex], pendingSpawn);
+                    AddPending(_groundPools[tile.GroundPrefabIndex], baseSpawn);
 
                     if (tile.DecorationPrefabIndex != -1)
                     {
-                        pendingSpawn.IsDecoration = true;
-                        AddPending(_decorPools[tile.DecorationPrefabIndex], pendingSpawn);
+                        baseSpawn.IsDecoration = true;
+                        AddPending(_decorPools[tile.DecorationPrefabIndex], baseSpawn);
                     }
                 }
             }
+        }
 
-            // Perform batched spawns per pool (tight arrays)
+        private void AddPending(AsyncGameObjectPool pool, PendingSpawn spawn)
+        {
+            if (!_pendingByPool.TryGetValue(pool, out var list))
+            {
+                list = _pendingSpawnPoolLists.Count > 0
+                    ? _pendingSpawnPoolLists.Pop()
+                    : new List<PendingSpawn>(32);
+                _pendingByPool.Add(pool, list);
+            }
+
+            list.Add(spawn);
+        }
+
+        private void RecyclePendingList(List<PendingSpawn> list)
+        {
+            list.Clear();
+            _pendingSpawnPoolLists.Push(list);
+        }
+        
+        private async Task ExecuteSpawnsAsync()
+        {
             foreach (var (pool, list) in _pendingByPool)
             {
                 if (pool == null || list.Count == 0)
                 {
-                    RecyclePendingList(list); 
+                    RecyclePendingList(list);
                     continue;
                 }
 
-                // Build exact-length arrays (Length == count) to match pool expectations
                 var count = list.Count;
                 var positions = new Vector3[count];
                 var rotations = new Quaternion[count];
@@ -216,28 +266,7 @@ namespace Game.Scripts
                 try
                 {
                     var instances = await pool.GetBatch(count, positions, rotations);
-
-                    for (int i = 0; i < count; i++)
-                    {
-                        var ps = list[i];
-                        var go = instances[i];
-
-                        if (!_activeTiles.TryGetValue(ps.MapIndex, out var ti))
-                            ti = new TileInstance();
-
-                        if (ps.IsDecoration)
-                        {
-                            ti.Decoration = go;
-                            ti.DecorationPool = pool;
-                        }
-                        else
-                        {
-                            ti.GroundOrWater = go;
-                            ti.GroundOrWaterPool = pool;
-                        }
-
-                        _activeTiles[ps.MapIndex] = ti;
-                    }
+                    ApplySpawnResults(list, instances, pool);
                 }
                 catch (System.Exception ex)
                 {
@@ -248,34 +277,29 @@ namespace Game.Scripts
             }
         }
 
-        private void AddPending(AsyncGameObjectPool pool, PendingSpawn spawn)
+        private void ApplySpawnResults(List<PendingSpawn> spawns, GameObject[] instances, AsyncGameObjectPool pool)
         {
-            if (!_pendingByPool.TryGetValue(pool, out var list))
+            for (var i = 0; i < spawns.Count; i++)
             {
-                list = _pendingSpawnPoolLists.Count > 0
-                    ? _pendingSpawnPoolLists.Pop()
-                    : new List<PendingSpawn>(32);
-                _pendingByPool.Add(pool, list);
-            }
-            list.Add(spawn);
-        }
+                var ps = spawns[i];
+                var go = instances[i];
 
-        private void RecyclePendingList(List<PendingSpawn> list)
-        {
-            list.Clear();
-            _pendingSpawnPoolLists.Push(list);
-        }
+                if (!_activeTiles.TryGetValue(ps.MapIndex, out var ti))
+                    ti = new TileInstance();
 
-        private void AddRelease(AsyncGameObjectPool pool, GameObject go)
-        {
-            if (!_releaseByPool.TryGetValue(pool, out var list))
-            {
-                list = _releaseListCache.Count > 0
-                    ? _releaseListCache.Pop()
-                    : new List<GameObject>(32);
-                _releaseByPool.Add(pool, list);
+                if (ps.IsDecoration)
+                {
+                    ti.Decoration = go;
+                    ti.DecorationPool = pool;
+                }
+                else
+                {
+                    ti.GroundOrWater = go;
+                    ti.GroundOrWaterPool = pool;
+                }
+
+                _activeTiles[ps.MapIndex] = ti;
             }
-            list.Add(go);
         }
     }
 }
