@@ -59,9 +59,13 @@ namespace Game.Scripts
         [SerializeField, Range(0,1)] private float _decorationSpawnChance = 0.5f;
         [SerializeField] private int _seed = 0;
         
-        private MapData _map;
+        private bool _initialized = false;
+        
         private AddressableAssets.Assets _assets;
+        
+        private MapData _map;
         private Transform _player;
+        private GameObject _waterPlane;
 
         
         private AsyncGameObjectPoolCollection _waterPool;
@@ -69,7 +73,6 @@ namespace Game.Scripts
         private AsyncGameObjectPoolCollection _decorationsPool;
         
         private Task _loop;
-        private GameObject _waterPlane;
         
         private RectInt _currentStreamArea;
         private RectInt _lastStreamArea;
@@ -99,16 +102,15 @@ namespace Game.Scripts
             
             _loop = StreamLoop();
             _waterPlane = Instantiate(_assets.Water.LoadedObject);
+            _initialized = true;
         }
 
         private void Update()
         {
-            if (_player != null)
-            {
-                var playerPos = _player.position;
-                _waterPlane.transform.position = playerPos;
-            }
+            if (!_initialized) return;
 
+            var playerPos = _player.position;
+            _waterPlane.transform.position = playerPos;
             var scale = new Vector3(_spawnRadius * 2, 1, _spawnRadius * 2);
             _waterPlane.transform.localScale = scale;
         }
@@ -198,6 +200,7 @@ namespace Game.Scripts
                     var tile = _map[tileIndex];
 
                     var pos = _grid.CellToWorld(new Vector3Int(x, -y, 0));
+                    pos.y = 0;
 
                     var spawnReqest = new SpawnRequest
                     {
@@ -280,9 +283,9 @@ namespace Game.Scripts
             for (var i = 0; i < count; i++)
             {
                 var spawnedGameObject = instances[i];
-#if UNITY_EDITOR
-                spawnedGameObject.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector | HideFlags.NotEditable;
-#endif
+// #if UNITY_EDITOR
+//                 spawnedGameObject.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector | HideFlags.NotEditable;
+// #endif
                 var spawnRequest = spawnRequests[i];
                 
                 if (!_activeTiles.TryGetValue(spawnRequest.MapIndex, out var tileInstance))
