@@ -65,7 +65,6 @@ namespace Game.Scripts
         
         private MapData _map;
         private Transform _player;
-        private GameObject _waterPlane;
 
         
         private AsyncGameObjectPoolCollection _waterPool;
@@ -82,7 +81,9 @@ namespace Game.Scripts
         private Dictionary<AsyncGameObjectPool, List<SpawnRequest>> _poolToSpawnRequests;
         private Dictionary<int, TileInstance> _activeTiles;
 
-        public void Init(AddressableAssets.Assets assets, Transform player)
+        public MapData Map => _map;
+
+        public async Task Init(AddressableAssets.Assets assets, Transform player)
         {
             _assets = assets;
             _player = player;
@@ -101,18 +102,8 @@ namespace Game.Scripts
             _activeTiles = new Dictionary<int, TileInstance>();
             
             _loop = StreamLoop();
-            _waterPlane = Instantiate(_assets.Water.LoadedObject);
             _initialized = true;
-        }
-
-        private void Update()
-        {
-            if (!_initialized) return;
-
-            var playerPos = _player.position;
-            _waterPlane.transform.position = playerPos;
-            var scale = new Vector3(_spawnRadius * 2, 1, _spawnRadius * 2);
-            _waterPlane.transform.localScale = scale;
+            await Task.CompletedTask;
         }
 
         private async Task StreamLoop()
@@ -200,7 +191,7 @@ namespace Game.Scripts
                     var tile = _map[tileIndex];
 
                     var pos = _grid.CellToWorld(new Vector3Int(x, -y, 0));
-                    pos.y = 0;
+                    // pos.y = 0;
 
                     var spawnReqest = new SpawnRequest
                     {

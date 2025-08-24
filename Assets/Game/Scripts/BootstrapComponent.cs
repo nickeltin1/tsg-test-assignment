@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using Game.Scripts.Navigation;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
@@ -8,6 +9,7 @@ namespace Game.Scripts
     {
         [SerializeField] private AddressableAssets.Assets _assets;
         [SerializeField] private MapStreamerComponent _mapStreamer;
+        [SerializeField] private MapNavigationComponent _mapNavigation;
       
         
         private async void Awake()
@@ -32,11 +34,9 @@ namespace Game.Scripts
                     await AddressableAssets.LoadAsync(_assets);
                 }
                 
-              
-
                 var player = Instantiate(_assets.Boat.LoadedObject).GetComponent<Player>();
-                
-                _mapStreamer.Init(_assets, player.transform);
+                await _mapStreamer.Init(_assets, player.transform);
+                await _mapNavigation.Init(player, _mapStreamer.Map);
             }
         }
     }

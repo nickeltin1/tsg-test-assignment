@@ -33,6 +33,8 @@ namespace Game.Scripts
             public readonly int X;
             public readonly int Y;
             public readonly int Index;
+
+            public bool IsPassable => Type == TileType.Water;
             
             public Vector2Int Position => new(X, Y);
             
@@ -79,13 +81,20 @@ namespace Game.Scripts
         /// 2D to 1D conversion
         /// </summary>
         public int XYToIndex(int x, int y) => y * Width + x;
-        public int XYToIndex(Vector2Int position) => XYToIndex(position.x, position.y);
+        public int XYToIndex(Vector2Int pos) => XYToIndex(pos.x, pos.y);
         
         public void IndexToXY(int index, out int x, out int y)
         {
             y = index / Width;
             x = index % Width;
         }
+
+        public bool Contains(int x, int y) => x >= 0 && x < Width && y >= 0 && y < Height;
+        
+        public bool Contains(Vector2Int pos) => Contains(pos.x, pos.y);
+
+        
+        public Tile GetTile(Vector2Int pos) => GetTile(pos.x, pos.y);
 
         public Tile GetTile(int x, int y)
         {
