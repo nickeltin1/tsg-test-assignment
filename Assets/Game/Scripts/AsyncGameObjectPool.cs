@@ -7,6 +7,10 @@ using Object = UnityEngine.Object;
 
 namespace Game.Scripts
 {
+    /// <summary>
+    /// Simple implementation for the async pooling.
+    /// Uses <see cref="Object.InstantiateAsync"/> for batch instantiation and spreads out objects release
+    /// </summary>
     public class AsyncGameObjectPool
     {
         private static readonly Vector3[] _tempVectorArray = new Vector3[1];
@@ -34,9 +38,12 @@ namespace Game.Scripts
             return task.Result[0];
         }
 
-        public async Task<GameObject[]> GetBatch(int count, Vector3[] positions, Quaternion[] rotations, Transform parent)
+        
+        public async Task<GameObject[]> GetBatch(int count, Vector3[] positions, Quaternion[] rotations, Transform parent = null)
         {
+            parent ??= _root;
             // First trying to use existing game objects
+            // (Array pool can be used too, but whatever)
             var result = new GameObject[count];
             var remainingCount = count;
             var i = 0;
@@ -93,5 +100,26 @@ namespace Game.Scripts
                 if (i % 10 == 0) await Task.Yield();
             }
         }
+    }
+
+    /// <summary>
+    /// Unifies different source objects with one parent
+    /// </summary>
+    public class AsyncGameObjectPoolCollection
+    {
+        private readonly List<AsyncGameObjectPool> _pools;
+
+        public AsyncGameObjectPoolCollection(IEnumerable<GameObject> sourceObjects, Transform root)
+        {
+            _pools = new List<AsyncGameObjectPool>();
+            foreach (var sourceObject in sourceObjects)
+            {
+                _pools.Add(new AsyncGameObjectPool(sourceObject, root));
+            }
+        }
+
+        public int Count => _pools.Count;
+        
+        public AsyncGameObjectPool this[int index] => _pools[index];
     }
 }

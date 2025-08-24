@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Game.Scripts
 {
-    public sealed class MapStreamerCircle : MonoBehaviour
+    public sealed class MapStreamerComponent : MonoBehaviour
     {
         [Header("Scene Refs")]
         [SerializeField] private Grid _grid;
@@ -18,16 +18,13 @@ namespace Game.Scripts
         private MapData _map;
         private AddressableAssets.Assets _assets;
         private Transform _player;
+        
+        
+        private AsyncGameObjectPoolCollection _waterPools;
+        private AsyncGameObjectPoolCollection _groundPools;
+        private AsyncGameObjectPoolCollection _decorPools;
 
-        private AsyncGameObjectPool[] _waterPools;
-        private AsyncGameObjectPool[] _groundPools;
-        private AsyncGameObjectPool[] _decorPools;
-
-        // Active tile instances keyed by map index
         private readonly Dictionary<int, TileInstance> _active = new();
-
-        // Stable mapping: which parent belongs to which pool instance
-        private readonly Dictionary<AsyncGameObjectPool, Transform> _poolParent = new(128);
 
         private Task _loop;
         private bool _running;
@@ -55,35 +52,9 @@ namespace Game.Scripts
             _assets = assets;
             _player = player;
 
-            // Build pools per prefab index
-            var water = _assets.WaterTiles.LoadedObjects;
-            var ground = _assets.GroundTiles.LoadedObjects;
-            var decor = _assets.Decorations.LoadedObjects;
-
-            _waterPools = new AsyncGameObjectPool[water.Count];
-            _groundPools = new AsyncGameObjectPool[ground.Count];
-            _decorPools  = new AsyncGameObjectPool[decor.Count];
-
-            _poolParent.Clear();
-
-            for (int i = 0; i < water.Count; i++)
-            {
-                var p = new AsyncGameObjectPool(water[i], _waterParent);
-                _waterPools[i] = p;
-                _poolParent[p] = _waterParent;
-            }
-            for (int i = 0; i < ground.Count; i++)
-            {
-                var p = new AsyncGameObjectPool(ground[i], _groundParent);
-                _groundPools[i] = p;
-                _poolParent[p] = _groundParent;
-            }
-            for (int i = 0; i < decor.Count; i++)
-            {
-                var p = new AsyncGameObjectPool(decor[i], _decorParent);
-                _decorPools[i] = p;
-                _poolParent[p] = _decorParent;
-            }
+            _waterPools = _assets.WaterTiles.CreateAsyncPools(_waterParent);
+            _groundPools = _assets.GroundTiles.CreateAsyncPools(_groundParent);
+            _decorPools = _assets.Decorations.CreateAsyncPools(_decorParent);
 
             _running = true;
             _loop = StreamLoop();
@@ -115,8 +86,7 @@ namespace Game.Scripts
         {
             if (_map == null || _player == null || _grid == null)
                 return;
-
-            // --- Compute desired set (true circle in world space) ---
+            
             var boatPos = _player.position;
             var cellCenter = _grid.WorldToCell(boatPos);
             var cx = cellCenter.x;
@@ -145,12 +115,12 @@ namespace Game.Scripts
                     _desired.Add(_map.XYToIndex(x, y));
                 }
             }
-
-            // -------- REMOVALS: active \ desired (bucket by pool → ReleaseBatch) --------
+            
             _toRemove.Clear();
             foreach (var kv in _active)
-                if (!_desired.Contains(kv.Key))
-                    _toRemove.Add(kv.Key);
+            {
+                if (!_desired.Contains(kv.Key)) _toRemove.Add(kv.Key);
+            }
 
             _releaseByPool.Clear();
             foreach (var idx in _toRemove)
@@ -167,16 +137,14 @@ namespace Game.Scripts
             }
 
             // Execute releases per pool (tight arrays)
-            foreach (var kv in _releaseByPool)
+            foreach (var (pool, list) in _releaseByPool)
             {
-                var pool = kv.Key;
-                var list = kv.Value;
                 if (pool != null && list.Count > 0)
                 {
                     try
                     {
                         var toRelease = new GameObject[list.Count];
-                        for (int i = 0; i < list.Count; i++) toRelease[i] = list[i];
+                        for (var i = 0; i < list.Count; i++) toRelease[i] = list[i];
                         await pool.ReleaseBatch(toRelease);
                     }
                     catch (System.Exception ex)
@@ -187,8 +155,7 @@ namespace Game.Scripts
                 list.Clear();
                 _releaseListCache.Push(list);
             }
-
-            // -------- SPAWNS: desired \ active (bucket by pool → GetBatch) --------
+            
             _pendingByPool.Clear();
 
             foreach (var idx in _desired)
@@ -200,69 +167,53 @@ namespace Game.Scripts
                 var cell = new Vector3Int(x, -y, 0);
                 var pos  = _grid.CellToWorld(cell);
 
+                var pendingSpawn = new PendingSpawn
+                {
+                    MapIndex = idx,
+                    Position = pos,
+                    Rotation = Quaternion.identity,
+                    IsDecoration = false
+                };
+                
                 if (tile.Type == MapData.TileType.Water)
                 {
-                    var pool = SafePool(_waterPools, tile.WaterPrefabIndex);
-                    if (pool != null)
-                        AddPending(pool, new PendingSpawn
-                        {
-                            MapIndex = idx,
-                            Position = pos,
-                            Rotation = Quaternion.identity,
-                            IsDecoration = false
-                        });
+                    AddPending(_waterPools[tile.WaterPrefabIndex], pendingSpawn);
                 }
                 else
                 {
-                    var gPool = SafePool(_groundPools, tile.GroundPrefabIndex);
-                    if (gPool != null)
-                        AddPending(gPool, new PendingSpawn
-                        {
-                            MapIndex = idx,
-                            Position = pos,
-                            Rotation = Quaternion.identity,
-                            IsDecoration = false
-                        });
+                    AddPending(_groundPools[tile.GroundPrefabIndex], pendingSpawn);
 
-                    if (tile.DecorationPrefabIndex >= 0 && tile.DecorationPrefabIndex < _decorPools.Length)
+                    if (tile.DecorationPrefabIndex != -1)
                     {
-                        var dPool = SafePool(_decorPools, tile.DecorationPrefabIndex);
-                        if (dPool != null)
-                            AddPending(dPool, new PendingSpawn
-                            {
-                                MapIndex = idx,
-                                Position = pos,
-                                Rotation = Quaternion.identity,
-                                IsDecoration = true
-                            });
+                        pendingSpawn.IsDecoration = true;
+                        AddPending(_decorPools[tile.DecorationPrefabIndex], pendingSpawn);
                     }
                 }
             }
 
             // Perform batched spawns per pool (tight arrays)
-            foreach (var kv in _pendingByPool)
+            foreach (var (pool, list) in _pendingByPool)
             {
-                var pool = kv.Key;
-                var list = kv.Value;
-
-                if (pool == null || list.Count == 0) { RecyclePendingList(list); continue; }
+                if (pool == null || list.Count == 0)
+                {
+                    RecyclePendingList(list); 
+                    continue;
+                }
 
                 // Build exact-length arrays (Length == count) to match pool expectations
-                int count = list.Count;
+                var count = list.Count;
                 var positions = new Vector3[count];
                 var rotations = new Quaternion[count];
 
-                for (int i = 0; i < count; i++)
+                for (var i = 0; i < count; i++)
                 {
                     positions[i] = list[i].Position;
                     rotations[i] = list[i].Rotation;
                 }
 
-                var parent = _poolParent.TryGetValue(pool, out var p) ? p : _groundParent;
-
                 try
                 {
-                    var instances = await pool.GetBatch(count, positions, rotations, parent);
+                    var instances = await pool.GetBatch(count, positions, rotations);
 
                     for (int i = 0; i < count; i++)
                     {
@@ -293,13 +244,6 @@ namespace Game.Scripts
 
                 RecyclePendingList(list);
             }
-        }
-
-        // ----------------- helpers -----------------
-
-        private static AsyncGameObjectPool SafePool(AsyncGameObjectPool[] arr, int idx)
-        {
-            return (idx >= 0 && idx < arr.Length) ? arr[idx] : null;
         }
 
         private void AddPending(AsyncGameObjectPool pool, PendingSpawn spawn)

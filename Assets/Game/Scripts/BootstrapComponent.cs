@@ -11,7 +11,7 @@ namespace Game.Scripts
     {
         [SerializeField] private AddressableAssets.Assets _assets;
         [SerializeField] private MapComponent _map;
-        [SerializeField] private MapStreamerCircle _mapStreamer;
+        [SerializeField] private MapStreamerComponent _mapStreamer;
         [SerializeField] private string _mapName;
         [SerializeField, Range(0,1)] private float _decorationSpawnChance = 0.3f;
         [SerializeField] private int _seed;

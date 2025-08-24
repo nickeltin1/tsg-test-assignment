@@ -46,8 +46,6 @@ namespace Game.Scripts
                 loadHandle.Release();
             }
 
-            public TAsset GetRandom() => LoadedObjects[Random.Range(0, LoadedObjects.Count)];
-
             public TAsset this[int index] => LoadedObjects[index];
         }
 
