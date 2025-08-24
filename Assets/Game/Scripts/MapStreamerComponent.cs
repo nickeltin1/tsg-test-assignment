@@ -23,8 +23,17 @@ namespace Game.Scripts
         private AsyncGameObjectPoolCollection _waterPools;
         private AsyncGameObjectPoolCollection _groundPools;
         private AsyncGameObjectPoolCollection _decorPools;
+        
+        private readonly HashSet<int> _tilesToAdd = new();
+        private readonly List<int> _tilesToRemove = new();
+        
+        private readonly Dictionary<AsyncGameObjectPool, List<PendingSpawn>> _pendingByPool = new();
+        private readonly Dictionary<AsyncGameObjectPool, List<GameObject>> _releaseByPool = new();
+        
+        private readonly Stack<List<PendingSpawn>> _pendingSpawnPoolLists = new();
+        private readonly Stack<List<GameObject>> _releaseListCache = new();
 
-        private readonly Dictionary<int, TileInstance> _active = new();
+        private readonly Dictionary<int, TileInstance> _activeTiles = new();
 
         private Task _loop;
         private bool _running;
@@ -70,14 +79,7 @@ namespace Game.Scripts
         {
             while (_running)
             {
-                try
-                {
-                    await StepAsync();
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogException(ex);
-                }
+                await StepAsync();
                 await Task.Yield();
             }
         }
@@ -99,7 +101,7 @@ namespace Game.Scripts
             );
             var rCells = Mathf.CeilToInt(_worldRadius / cellDiag);
 
-            _desired.Clear();
+            _tilesToAdd.Clear();
             for (int y = cy - rCells; y <= cy + rCells; y++)
             {
                 if ((uint)y >= (uint)_map.Height) continue;
@@ -112,20 +114,20 @@ namespace Game.Scripts
                     var pos  = _grid.CellToWorld(cell);
                     if ((pos - boatPos).sqrMagnitude > _worldRadius * _worldRadius) continue;
 
-                    _desired.Add(_map.XYToIndex(x, y));
+                    _tilesToAdd.Add(_map.XYToIndex(x, y));
                 }
             }
             
-            _toRemove.Clear();
-            foreach (var kv in _active)
+            _tilesToRemove.Clear();
+            foreach (var kv in _activeTiles)
             {
-                if (!_desired.Contains(kv.Key)) _toRemove.Add(kv.Key);
+                if (!_tilesToAdd.Contains(kv.Key)) _tilesToRemove.Add(kv.Key);
             }
 
             _releaseByPool.Clear();
-            foreach (var idx in _toRemove)
+            foreach (var idx in _tilesToRemove)
             {
-                var inst = _active[idx];
+                var inst = _activeTiles[idx];
 
                 if (inst.Decoration && inst.DecorationPool != null)
                     AddRelease(inst.DecorationPool, inst.Decoration);
@@ -133,7 +135,7 @@ namespace Game.Scripts
                 if (inst.GroundOrWater && inst.GroundOrWaterPool != null)
                     AddRelease(inst.GroundOrWaterPool, inst.GroundOrWater);
 
-                _active.Remove(idx);
+                _activeTiles.Remove(idx);
             }
 
             // Execute releases per pool (tight arrays)
@@ -158,9 +160,9 @@ namespace Game.Scripts
             
             _pendingByPool.Clear();
 
-            foreach (var idx in _desired)
+            foreach (var idx in _tilesToAdd)
             {
-                if (_active.ContainsKey(idx)) continue;
+                if (_activeTiles.ContainsKey(idx)) continue;
 
                 _map.IndexToXY(idx, out var x, out var y);
                 var tile = _map[idx];
@@ -220,7 +222,7 @@ namespace Game.Scripts
                         var ps = list[i];
                         var go = instances[i];
 
-                        if (!_active.TryGetValue(ps.MapIndex, out var ti))
+                        if (!_activeTiles.TryGetValue(ps.MapIndex, out var ti))
                             ti = new TileInstance();
 
                         if (ps.IsDecoration)
@@ -234,7 +236,7 @@ namespace Game.Scripts
                             ti.GroundOrWaterPool = pool;
                         }
 
-                        _active[ps.MapIndex] = ti;
+                        _activeTiles[ps.MapIndex] = ti;
                     }
                 }
                 catch (System.Exception ex)
@@ -275,15 +277,5 @@ namespace Game.Scripts
             }
             list.Add(go);
         }
-
-        // temp containers (reused across frames)
-        private readonly HashSet<int> _desired = new();
-        private readonly List<int> _toRemove = new();
-
-        private readonly Dictionary<AsyncGameObjectPool, List<PendingSpawn>> _pendingByPool = new(32);
-        private readonly Stack<List<PendingSpawn>> _pendingSpawnPoolLists = new();
-
-        private readonly Dictionary<AsyncGameObjectPool, List<GameObject>> _releaseByPool = new(16);
-        private readonly Stack<List<GameObject>> _releaseListCache = new();
     }
 }
