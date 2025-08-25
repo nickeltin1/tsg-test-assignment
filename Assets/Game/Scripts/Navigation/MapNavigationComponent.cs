@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Game.Scripts.Navigation
@@ -9,6 +10,7 @@ namespace Game.Scripts.Navigation
         [SerializeField] private Camera _camera;
         [SerializeField] private LayerMask _cellMask;
         [SerializeField] private SelectedCellComponent _selectedCell;
+        [SerializeField] private SelectedCellComponent _pathfindVisualizationCell;
 
         private bool _initialized;
         private Player _player;
@@ -20,13 +22,36 @@ namespace Game.Scripts.Navigation
         {
             _mapComponent = mapComponent;
             _player = player;
+            
             _path = new Path();
-            _path.Updated += UpdatePathPreview;
+            // _path.Updated += UpdatePathPreview;
+            _path.BuildStarted += PathOnBuildStarted;
+            _path.PointPushed += PathOnPointPushed;
+            _path.PointPopped += PathOnPointPopped;
+            
             _selectedCell.Init();
+            _pathfindVisualizationCell.Init();
             _player.SetPath(_path);
             _pathfinder = new Pathfinder(mapComponent, _path);
             _initialized = true;
             await Task.CompletedTask;
+        }
+
+        private void PathOnPointPopped()
+        {
+            _pathRenderer.positionCount--;
+        }
+
+        private void PathOnPointPushed(float3 pos)
+        {
+            _pathRenderer.positionCount++;
+            pos.y = _pathRenderer.transform.position.y;
+            _pathRenderer.SetPosition(_pathRenderer.positionCount - 1, pos);
+        }
+
+        private void PathOnBuildStarted()
+        {
+            _pathRenderer.positionCount = 0;
         }
 
         private void Update()
@@ -34,6 +59,7 @@ namespace Game.Scripts.Navigation
             if (!_initialized) return;
 
             var ray = _camera.ScreenPointToRay(Input.mousePosition);
+            
             if (Physics.Raycast(ray, out var hit, 100f, _cellMask))
             {
                 var cell = _mapComponent.WorldToCell(hit.point);
@@ -47,21 +73,22 @@ namespace Game.Scripts.Navigation
 
                 if (Input.GetMouseButtonDown(0) && state == SelectedCellComponent.State.ValidSelection)
                 {
-                    _player.ResetPathDistance();
-                    _pathfinder.RequestSearch(_mapComponent.WorldToCell(_player.transform.position), cell);
+                    FindPath(cell);
+                    // _player.ResetPathDistance();
                 }
             }
         }
 
-        private void UpdatePathPreview()
+        private void FindPath(Vector2Int cell)
         {
-            _pathRenderer.positionCount = _path.Count;
-            for (var i = 0; i < _path.Count; i++)
+            _pathfindVisualizationCell.gameObject.SetActive(true);
+            _pathfinder.RequestSearch(_mapComponent.WorldToCell(_player.transform.position), cell, node =>
             {
-                var pos = _path[i];
-                pos.y = _pathRenderer.transform.position.y;
-                _pathRenderer.SetPosition(i, pos);
-            }
+                _pathfindVisualizationCell.Refresh(_mapComponent.CellToWorld(node.Position), SelectedCellComponent.State.SearchingPath);
+            }, isSearchSuccessful =>
+            {
+                _pathfindVisualizationCell.gameObject.SetActive(false);
+            }, false, destroyCancellationToken);
         }
     }
 }

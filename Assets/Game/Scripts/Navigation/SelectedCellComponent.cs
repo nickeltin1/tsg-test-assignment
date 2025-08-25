@@ -8,12 +8,14 @@ namespace Game.Scripts.Navigation
         public enum State
         {
             InvalidSelection,
-            ValidSelection
+            ValidSelection,
+            SearchingPath,
         }
         
         [SerializeField] private Renderer _renderer;
-        [SerializeField] private Color _validColor;
-        [SerializeField] private Color _invalidColor;
+        [SerializeField] private Color _validColor = Color.green;
+        [SerializeField] private Color _invalidColor = Color.red;
+        [SerializeField] private Color _searchingColor = Color.yellow;
 
         private Material _material;
         
@@ -33,6 +35,9 @@ namespace Game.Scripts.Navigation
                     break;
                 case State.ValidSelection:
                     _material.color = _validColor;
+                    break;
+                case State.SearchingPath:
+                    _material.color = _searchingColor;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(state), state, null);

@@ -14,6 +14,10 @@ namespace Game.Scripts.Navigation
         private readonly Spline _spline;
         
         public event Action Updated;
+
+        public event Action BuildStarted;
+        public event Action<float3> PointPushed;
+        public event Action PointPopped;
         
         public Path()
         {
@@ -24,22 +28,61 @@ namespace Game.Scripts.Navigation
         public int Count => _spline.Count;
 
         public float3 this[int index] => _spline[index].Position;
-
-
-        public void Clear() => _spline.Clear();
-
-        public void AddPoints(IEnumerable<float3> points)
+        
+        public void Clear()
         {
+            _spline.Clear();
+            Updated?.Invoke();
+        }
+
+        public void SetPoints(IEnumerable<float3> points)
+        {
+            if (_isBuilding)
+                throw new Exception($"Path is building, {nameof(SetPoints)} call is permitted");
+            
             _spline.AddRange(points, TangentMode.Linear);
             Updated?.Invoke();
         }
-        
-        public void AddPoint(float3 point)
+
+        private bool _isBuilding;
+
+        public void StartBuilding()
         {
-            _spline.Add(point, TangentMode.Linear);
-            Updated?.Invoke();
+            if (_isBuilding)
+                throw new Exception("Path is already building.");
+            
+            _isBuilding = true;
+            Clear();
+            BuildStarted?.Invoke();
         }
 
+        public void StopBuilding()
+        {
+            if (!_isBuilding)
+                throw new Exception("Path is not building");
+            
+            _isBuilding = false;
+            Updated?.Invoke();
+        }
+        
+        public void PushPoint(float3 point)
+        {
+            if (!_isBuilding)
+                throw new Exception($"Path is not building, {nameof(PushPoint)} call is permitted");
+            
+            _spline.Add(point, TangentMode.Linear);
+            PointPushed?.Invoke(point);
+        }
+
+        public void PopPoint()
+        {
+            if (!_isBuilding)
+                throw new Exception($"Path is not building, {nameof(PopPoint)} call is permitted");
+            
+            _spline.RemoveAt(_spline.Count - 1);
+            PointPopped?.Invoke();
+        }
+        
         public float NormalizedTimeToDistance(float t) => Length * t;
         
         public float DistanceToNormalizedTime(float distance) => math.unlerp(0, Length, distance);
