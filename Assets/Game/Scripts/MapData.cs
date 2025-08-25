@@ -88,7 +88,13 @@ namespace Game.Scripts
             y = index / Width;
             x = index % Width;
         }
-
+        
+        public void IndexToXY(int index, out Vector2Int position)
+        {
+            IndexToXY(index, out var x, out var y);
+            position = new Vector2Int(x, y);
+        }
+        
         public bool Contains(int x, int y) => x >= 0 && x < Width && y >= 0 && y < Height;
         
         public bool Contains(Vector2Int pos) => Contains(pos.x, pos.y);

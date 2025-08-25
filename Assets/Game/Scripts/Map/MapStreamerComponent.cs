@@ -38,12 +38,6 @@ namespace Game.Scripts
             public bool IsDecoration;
         }
         
-        [Header("References")]
-        [SerializeField] private Grid _grid;
-        [SerializeField] private Transform _waterParent;
-        [SerializeField] private Transform _groundParent;
-        [SerializeField] private Transform _decorParent;
-        
         [Header("Streaming settings")]
         [Tooltip("In tiles")]
         [SerializeField, Range(1, 50)] private int _spawnRadius = 30;
@@ -65,7 +59,7 @@ namespace Game.Scripts
         
         private MapData _map;
         private Transform _player;
-
+        private MapComponent _mapComponent;
         
         private AsyncGameObjectPoolCollection _waterPool;
         private AsyncGameObjectPoolCollection _groundPool;
@@ -83,8 +77,9 @@ namespace Game.Scripts
 
         public MapData Map => _map;
 
-        public async Task Init(AddressableAssets.Assets assets, Transform player)
+        public async Task Init(AddressableAssets.Assets assets, Transform player, MapComponent mapComponent)
         {
+            _mapComponent = mapComponent;
             _assets = assets;
             _player = player;
             
@@ -92,9 +87,9 @@ namespace Game.Scripts
             _map = _assets.Maps.FindMapByName(_mapName);
             _map.InitRandomTilesState(_assets, _seed, _decorationSpawnChance);
 
-            _waterPool = _assets.WaterTiles.CreateAsyncPools(_waterParent);
-            _groundPool = _assets.GroundTiles.CreateAsyncPools(_groundParent);
-            _decorationsPool = _assets.Decorations.CreateAsyncPools(_decorParent);
+            _waterPool = _assets.WaterTiles.CreateAsyncPools(_mapComponent.WaterParent);
+            _groundPool = _assets.GroundTiles.CreateAsyncPools(_mapComponent.GroundParent);
+            _decorationsPool = _assets.Decorations.CreateAsyncPools(_mapComponent.DecorationsParent);
             
             _addedAreas = new List<RectInt>();
             _removedAreas = new List<RectInt>();
@@ -119,8 +114,8 @@ namespace Game.Scripts
         {
             // Here we have a difference between rects, that determines what tiles should be loaded and unloaded
             _lastStreamArea = _currentStreamArea;
-            var playerCellPosition = _grid.WorldToCell(_player.position);
-            _currentStreamArea = MapStreamingMath.CalculateActiveArea(new Vector2Int(playerCellPosition.x, -playerCellPosition.y), _spawnRadius, _map.Width, _map.Height);
+            var playerCellPosition = _mapComponent.WorldToCell(_player.position);
+            _currentStreamArea = MapStreamingMath.CalculateActiveArea(playerCellPosition, _spawnRadius, _map.Width, _map.Height);
             MapStreamingMath.CalculateAreaDifference(_lastStreamArea, _currentStreamArea, _addedAreas, _removedAreas);
 
             // Spawn new tiles and delete unused tiles in parallel since can afford that with our rect differences
@@ -161,7 +156,7 @@ namespace Game.Scripts
                     
                     i++;
                     // Not exactly needed... 
-                    if (i % 50 == 0) await Task.Yield();
+                    if (i % _cleanupBatchCount == 0) await Task.Yield();
                 }
             }
         }
@@ -187,11 +182,10 @@ namespace Game.Scripts
                     if (_activeTiles.ContainsKey(tileIndex))
                         continue;
 
-                    _map.IndexToXY(tileIndex, out var x, out var y);
+                    _map.IndexToXY(tileIndex, out var position);
                     var tile = _map[tileIndex];
 
-                    var pos = _grid.CellToWorld(new Vector3Int(x, -y, 0));
-                    // pos.y = 0;
+                    var pos = _mapComponent.CellToWorld(position);
 
                     var spawnReqest = new SpawnRequest
                     {

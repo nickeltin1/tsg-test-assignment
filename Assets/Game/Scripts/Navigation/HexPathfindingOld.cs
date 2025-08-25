@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Game.Scripts.Navigation
 {
-    public static class HexPathfinding
+    public static class HexPathfindingOld
     {
         // A* over MapData using odd-r (row-offset) neighbors
         public static List<MapData.Tile> FindPath(MapData map, Vector2Int start, Vector2Int goal)

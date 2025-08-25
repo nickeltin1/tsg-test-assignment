@@ -1,74 +1,50 @@
-﻿using System.Collections.Generic;
+﻿using Game.Scripts.Navigation;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Game.Scripts
 {
+    /// <summary>
+    /// Currently just a path follower
+    /// Uses distance to move along the <see cref="Path"/>
+    /// </summary>
     public class Player : MonoBehaviour
     {
-        [SerializeField] private float _movementSpeed = 3f;
-        [SerializeField] private float _rotationSpeed = 6f; // how fast the boat turns
-        [SerializeField] private float _arriveSqrThreshold = 0.01f;
         [SerializeField] private Transform _model;
-
-        private readonly List<MapData.Tile> _path = new();
-        private Grid _grid;
-        private int _pathIndex = -1;
-
-        public void SetPath(List<MapData.Tile> path, Grid grid)
+        [SerializeField] private float _movementSpeed = 3f;   
+        [SerializeField] private float _rotationLerp = 6f;
+        
+        private Path _path;
+        private float _distance;
+        
+        public void SetPath(Path path)
         {
-            _grid = grid;
-
-            _path.Clear();
-            if (path != null && path.Count > 0)
-                _path.AddRange(path);
-
-            _pathIndex = _path.Count > 0 ? 0 : -1;
+            _path = path;
+            ResetPathDistance();
         }
 
-        public void Stop()
+        public void ResetPathDistance()
         {
-            _path.Clear();
-            _pathIndex = -1;
+            _distance = 0f;
         }
 
         private void Update()
         {
-            if (_pathIndex < 0 || _pathIndex >= _path.Count || _grid == null)
-                return;
+            if (_path == null) return;
+            
+            EvaluatePosition(_distance);
+            
+            _distance += _movementSpeed * Time.deltaTime;
+            _distance = math.clamp(_distance, 0f, _path.Length);
+        }
 
-            var tile = _path[_pathIndex];
-            var cell = new Vector3Int(tile.X, -tile.Y, 0);
-            var target = _grid.GetCellCenterWorld(cell);
-
-            var pos = transform.position;
-
-            // movement
-            if ((pos - target).sqrMagnitude <= _arriveSqrThreshold)
+        private void EvaluatePosition(float distance)
+        {
+            _path.EvaluateAtDistance(distance, out var position, out var tangent, out var up);
+            transform.position = position;
+            if (((Vector3)tangent).sqrMagnitude > 0.001)
             {
-                _pathIndex++;
-                if (_pathIndex >= _path.Count)
-                {
-                    _pathIndex = -1; // finished
-                }
-                return;
-            }
-
-            Vector3 dir = (target - pos).normalized;
-
-            // move
-            transform.position = Vector3.MoveTowards(
-                pos,
-                target,
-                _movementSpeed * Time.deltaTime);
-
-            // rotate smoothly toward direction of travel (keep upright on Y)
-            if (dir.sqrMagnitude > 0.001f)
-            {
-                Quaternion targetRot = Quaternion.LookRotation(dir, Vector3.up);
-                _model.rotation = Quaternion.Slerp(
-                    _model.rotation,
-                    targetRot,
-                    _rotationSpeed * Time.deltaTime);
+                _model.rotation = Quaternion.LookRotation(tangent, up);
             }
         }
     }

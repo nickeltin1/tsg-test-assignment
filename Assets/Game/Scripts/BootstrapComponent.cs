@@ -8,6 +8,7 @@ namespace Game.Scripts
     public class BootstrapComponent : MonoBehaviour
     {
         [SerializeField] private AddressableAssets.Assets _assets;
+        [SerializeField] private MapComponent _mapComponent;
         [SerializeField] private MapStreamerComponent _mapStreamer;
         [SerializeField] private MapNavigationComponent _mapNavigation;
       
@@ -35,8 +36,8 @@ namespace Game.Scripts
                 }
                 
                 var player = Instantiate(_assets.Boat.LoadedObject).GetComponent<Player>();
-                await _mapStreamer.Init(_assets, player.transform);
-                await _mapNavigation.Init(player, _mapStreamer.Map);
+                await _mapStreamer.Init(_assets, player.transform, _mapComponent);
+                await _mapNavigation.Init(player, _mapStreamer.Map, _mapComponent);
             }
         }
     }

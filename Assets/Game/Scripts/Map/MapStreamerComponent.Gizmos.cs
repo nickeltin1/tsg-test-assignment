@@ -13,7 +13,7 @@ namespace Game.Scripts
         private void OnDrawGizmos()
         {
             if (!_drawGizmos) return; 
-            if (_grid == null || _map == null) return;
+            if (_mapComponent == null || _map == null) return;
 
             // full map outline (gray)
             DrawAreaWire(new RectInt(0, 0, _map.Width, _map.Height), new Color(0.6f, 0.6f, 0.6f, 1f));
@@ -25,13 +25,17 @@ namespace Game.Scripts
 
             // diffs
             if (_addedAreas != null)
+            {
                 foreach (var r in _addedAreas)
                     DrawAreaFilledThenWire(r, new Color(0.2f, 1f, 0.2f, 0.18f),
                         new Color(0.2f, 1f, 0.2f, 0.9f)); // green
+            }
 
             if (_removedAreas != null)
+            {
                 foreach (var r in _removedAreas)
                     DrawAreaFilledThenWire(r, new Color(1f, 0.2f, 0.2f, 0.18f), new Color(1f, 0.2f, 0.2f, 0.9f)); // red
+            }
         }
 
         private void DrawAreaFilledThenWire(RectInt area, Color fill, Color wire)
@@ -53,8 +57,7 @@ namespace Game.Scripts
             Gizmos.color = wire;
             Gizmos.DrawWireCube(center, SizeWithThickness(size, xyPlane));
         }
-
-// Uses world centers for span (handles Grid scale + cellGap), and adds one world tile size.
+        
         private void GetAreaWorldBox(RectInt r, out Vector3 center, out Vector3 size, out bool xyPlane)
         {
             if (r.width <= 0 || r.height <= 0)
@@ -66,22 +69,22 @@ namespace Game.Scripts
             }
 
             // Inclusive min/max tile cells (RectInt xMax/yMax are EXCLUSIVE)
-            var minCell = new Vector3Int(r.xMin, -r.yMin, 0);
-            var maxCell = new Vector3Int(r.xMax - 1, -(r.yMax - 1), 0);
+            var minCell = new Vector2Int(r.xMin, r.yMin);
+            var maxCell = new Vector2Int(r.xMax - 1, r.yMax - 1);
 
             // World centers of extreme tiles
-            var c0 = _grid.GetCellCenterWorld(minCell);
-            var c1 = _grid.GetCellCenterWorld(maxCell);
+            var c0 = _mapComponent.CellToWorld(minCell);
+            var c1 = _mapComponent.CellToWorld(maxCell);
             center = (c0 + c1) * 0.5f;
 
+            var cellSize = _mapComponent.CellSize;
             // Decide plane: 2D XY if z==0, else XZ
-            xyPlane = Mathf.Approximately(_grid.cellSize.z, 0f);
+            xyPlane = Mathf.Approximately(cellSize.z, 0f);
 
             // World tile size (local cellSize scaled by transform)
-            var s = _grid.cellSize;
-            var ls = _grid.transform.lossyScale;
-            var tileW = Mathf.Abs(s.x * ls.x);
-            var tileH = xyPlane ? Mathf.Abs(s.y * ls.y) : Mathf.Abs(s.z * ls.z);
+            var scale = _mapComponent.transform.lossyScale;
+            var tileW = Mathf.Abs(cellSize.x * scale.x);
+            var tileH = xyPlane ? Mathf.Abs(cellSize.y * scale.y) : Mathf.Abs(cellSize.z * scale.z);
 
             // Span = distance between extreme centers + one tile size on that axis
             if (xyPlane)
