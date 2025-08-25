@@ -1,87 +1,100 @@
 ﻿using System;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Game.Scripts.Navigation
 {
+    /// <summary>
+    /// A* pathfinding on an odd-r (row-offset) hex grid.
+    /// Single per-node state array (NodeState[]) for performance & locality.
+    /// Heuristic is cube distance computed with int3 (integer-exact).
+    /// </summary>
     public static class HexPathfindingOld
     {
-        // A* over MapData using odd-r (row-offset) neighbors
-        public static List<MapData.Tile> FindPath(MapData map, Vector2Int start, Vector2Int goal)
+        [Flags]
+        private enum NodeFlags : byte
         {
+            None = 0,
+            InOpen = 1 << 0,
+            Closed = 1 << 1
+        }
+
+        private struct NodeState
+        {
+            public float G; // cost from start
+            public float F; // G + heuristic
+            public int CameFrom; // predecessor index
+            public NodeFlags Flags; // InOpen / Closed
+        }
+
+        public static List<MapData.Tile> FindPath(MapComponent mapComponent, Vector2Int start, Vector2Int goal)
+        {
+            var map = mapComponent.MapData;
             if (!map.Contains(start) || !map.Contains(goal)) return null;
             if (!map.GetTile(start).IsPassable || !map.GetTile(goal).IsPassable) return null;
-
-            var width = map.Width;
-            var height = map.Height;
+            
             var length = map.Length;
 
-            int StartIndex(int x, int y)
-            {
-                return y * width + x;
-            }
+            var startIndex = map.XYToIndex(start);
+            var goalIndex = map.XYToIndex(goal);
+            
 
-            var startIndex = StartIndex(start.x, start.y);
-            var goalIndex = StartIndex(goal.x, goal.y);
-
-            // Node arrays
-            var gScore = new int[length];
-            var fScore = new int[length];
-            var cameFrom = new int[length];
-            var inOpen = new bool[length];
-            var closed = new bool[length];
-
-            const int INF = int.MaxValue / 4;
+            // Single state array
+            var state = new NodeState[length];
             for (var i = 0; i < length; i++)
             {
-                gScore[i] = INF;
-                fScore[i] = INF;
-                cameFrom[i] = -1;
+                state[i].G = float.PositiveInfinity;
+                state[i].F = float.PositiveInfinity;
+                state[i].CameFrom = -1;
+                state[i].Flags = NodeFlags.None;
             }
 
-            gScore[startIndex] = 0;
-            fScore[startIndex] = Heuristic(start, goal);
+            state[startIndex].G = 0;
+            state[startIndex].F = mapComponent.DistanceBetweenCells(start, goal);
 
-            // Min-heap (index by map index, key by fScore)
-            var openHeap = new MinHeap(length, fScore);
+            var openHeap = new MinHeap(length, state);
             openHeap.Push(startIndex);
-            inOpen[startIndex] = true;
+            state[startIndex].Flags |= NodeFlags.InOpen;
 
             while (openHeap.Count > 0)
             {
                 var current = openHeap.Pop();
-                inOpen[current] = false;
+                state[current].Flags &= ~NodeFlags.InOpen;
 
                 if (current == goalIndex)
-                    return ReconstructPath(map, cameFrom, current);
+                    return ReconstructPath(map, state, current);
 
-                closed[current] = true;
-                map.IndexToXY(current, out var cx, out var cy);
+                state[current].Flags |= NodeFlags.Closed;
 
-                // Iterate neighbors (odd-r)
-                foreach (var nb in NeighborsOddR(cx, cy, width, height))
+                map.IndexToXY(current, out var position);
+                
+                foreach (var neighborOffset in HexPathfindingMath.GetCellNeighborOffsets(position))
                 {
-                    var nx = nb.x;
-                    var ny = nb.y;
-                    var nIndex = StartIndex(nx, ny);
+                    var neighbor = position + neighborOffset;
+                    
+                    if (!map.Contains(neighbor)) continue;
+                        
+                    var nIndex = map.XYToIndex(neighbor);
 
-                    if (closed[nIndex]) continue;
+                    if ((state[nIndex].Flags & NodeFlags.Closed) != 0)
+                        continue;
 
-                    var tile = map[nx, ny];
-                    if (!tile.IsPassable) continue;
+                    var tile = map[neighbor];
+                    if (!tile.IsPassable)
+                        continue;
 
-                    var tentative = gScore[current] + 1; // uniform cost
-
-                    if (tentative < gScore[nIndex])
+                    var tentative = state[current].G + 1; // uniform step cost
+                    if (tentative < state[nIndex].G)
                     {
-                        cameFrom[nIndex] = current;
-                        gScore[nIndex] = tentative;
-                        fScore[nIndex] = tentative + Heuristic(new Vector2Int(nx, ny), goal);
+                        state[nIndex].CameFrom = current;
+                        state[nIndex].G = tentative;
+                        state[nIndex].F = tentative + mapComponent.DistanceBetweenCells(neighbor, goal);
 
-                        if (!inOpen[nIndex])
+                        if ((state[nIndex].Flags & NodeFlags.InOpen) == 0)
                         {
                             openHeap.Push(nIndex);
-                            inOpen[nIndex] = true;
+                            state[nIndex].Flags |= NodeFlags.InOpen;
                         }
                         else
                         {
@@ -91,73 +104,16 @@ namespace Game.Scripts.Navigation
                 }
             }
 
-            return null;
+            return null; // no path
         }
 
-        // Odd-R row-offset neighbors (flat-topped hexes)
-        private static IEnumerable<Vector2Int> NeighborsOddR(int x, int y, int width, int height)
-        {
-            // even row neighbors
-            Vector2Int[] even =
-            {
-                new(x + 1, y), new(x, y + 1), new(x - 1, y + 1),
-                new(x - 1, y), new(x - 1, y - 1), new(x, y - 1)
-            };
-
-            // odd row neighbors
-            Vector2Int[] odd =
-            {
-                new(x + 1, y), new(x + 1, y + 1), new(x, y + 1),
-                new(x - 1, y), new(x, y - 1), new(x + 1, y - 1)
-            };
-
-            var dirs = (y & 1) == 0 ? even : odd;
-            foreach (var p in dirs)
-                if (p.x >= 0 && p.x < width && p.y >= 0 && p.y < height)
-                    yield return p;
-        }
-
-        // Heuristic: cube distance for odd-r offset
-        private static int Heuristic(in Vector2Int a, in Vector2Int b)
-        {
-            var Ax = OffsetOddRToCube(a.x, a.y);
-            var Bx = OffsetOddRToCube(b.x, b.y);
-            return CubeDistance(Ax, Bx);
-        }
-
-        private readonly struct Cube
-        {
-            public readonly int x, y, z;
-
-            public Cube(int x, int y, int z)
-            {
-                this.x = x;
-                this.y = y;
-                this.z = z;
-            }
-        }
-
-        // Convert odd-r offset (col=x, row=y) to cube coordinates
-        private static Cube OffsetOddRToCube(int col, int row)
-        {
-            var x = col - ((row - (row & 1)) >> 1);
-            var z = row;
-            var y = -x - z;
-            return new Cube(x, y, z);
-        }
-
-        private static int CubeDistance(Cube a, Cube b)
-        {
-            return Mathf.Max(Mathf.Abs(a.x - b.x), Mathf.Abs(a.y - b.y), Mathf.Abs(a.z - b.z));
-        }
-
-        private static List<MapData.Tile> ReconstructPath(MapData map, int[] cameFrom, int current)
+        private static List<MapData.Tile> ReconstructPath(MapData map, NodeState[] state, int current)
         {
             var rev = new List<int>(64);
             while (current != -1)
             {
                 rev.Add(current);
-                current = cameFrom[current];
+                current = state[current].CameFrom;
             }
 
             rev.Reverse();
@@ -169,27 +125,24 @@ namespace Game.Scripts.Navigation
 
         private sealed class MinHeap
         {
-            private readonly int[] _heap; // capacity = map.Length, never resized
+            private readonly int[] _heap; // indices into node/state arrays
+            private readonly int[] _pos; // nodeIndex -> heap position, -1 if not in heap
+            private readonly NodeState[] _state; // reference to node states (for F keys)
             private int _count;
-            private readonly int[] _pos; // mapIndex -> heap position, -1 if not in heap
-            private readonly int[] _keyRef; // fScore reference
 
             public int Count => _count;
 
-            // capacity must be map.Length (max number of nodes that could be open)
-            public MinHeap(int capacity, int[] keyRef)
+            public MinHeap(int capacity, NodeState[] state)
             {
-                _heap = new int[capacity]; // no resize
+                _heap = new int[capacity];
                 _pos = new int[capacity];
-                for (var i = 0; i < capacity; i++) _pos[i] = -1;
-
-                _keyRef = keyRef;
+                Array.Fill(_pos, -1);
+                _state = state;
                 _count = 0;
             }
 
             public void Push(int idx)
             {
-                // Optional: guard (should never fire if capacity == map.Length)
                 if (_count >= _heap.Length)
                 {
                     Debug.LogError("MinHeap overflow. Ensure capacity == map.Length.");
@@ -225,12 +178,17 @@ namespace Game.Scripts.Navigation
                 SiftDown(p);
             }
 
+            private bool Less(int aIndex, int bIndex)
+            {
+                return _state[aIndex].F < _state[bIndex].F;
+            }
+
             private void SiftUp(int i)
             {
                 while (i > 0)
                 {
                     var parent = (i - 1) >> 1;
-                    if (_keyRef[_heap[i]] >= _keyRef[_heap[parent]]) break;
+                    if (!Less(_heap[i], _heap[parent])) break;
                     Swap(i, parent);
                     i = parent;
                 }
@@ -243,8 +201,10 @@ namespace Game.Scripts.Navigation
                     var l = i * 2 + 1;
                     var r = l + 1;
                     var smallest = i;
-                    if (l < _count && _keyRef[_heap[l]] < _keyRef[_heap[smallest]]) smallest = l;
-                    if (r < _count && _keyRef[_heap[r]] < _keyRef[_heap[smallest]]) smallest = r;
+
+                    if (l < _count && Less(_heap[l], _heap[smallest])) smallest = l;
+                    if (r < _count && Less(_heap[r], _heap[smallest])) smallest = r;
+
                     if (smallest == i) break;
                     Swap(i, smallest);
                     i = smallest;

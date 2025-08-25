@@ -20,12 +20,12 @@ namespace Game.Scripts.Navigation
         {
             _mapComponent = mapComponent;
             _player = player;
-            _initialized = true;
             _path = new Path();
             _path.Updated += UpdatePathPreview;
             _selectedCell.Init();
             _player.SetPath(_path);
             _pathfinder = new Pathfinder(mapComponent, _path);
+            _initialized = true;
             await Task.CompletedTask;
         }
 

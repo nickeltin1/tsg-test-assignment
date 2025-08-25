@@ -107,9 +107,11 @@ namespace Game.Scripts
             if (x >= Width || y >= Height) throw new IndexOutOfRangeException($"Coordinates ({x},{y}) are out of map bounds {Width}x{Height}");
             return _tiles[XYToIndex(x,y)];
         }
-        
+        public Tile GetTile(int index) => _tiles[index];
+
         public Tile this[int x, int y] => GetTile(x, y);
-        public Tile this[int index] => _tiles[index];
+        public Tile this[Vector2Int pos] => GetTile(pos);
+        public Tile this[int index] => GetTile(index);
         
         public void InitRandomTilesState(AddressableAssets.Assets assets, int seed, float decorChance = 0.3f)
         {

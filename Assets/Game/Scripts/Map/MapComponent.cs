@@ -49,5 +49,12 @@ namespace Game.Scripts
             // Y is inverted since map is loaded from file top to bottom
             return new Vector2Int(pos.x, -pos.y);
         }
+
+        public float DistanceBetweenCells(Vector2Int a, Vector2Int b)
+        {
+            var posA = CellToWorld(a);
+            var posB = CellToWorld(b);
+            return Vector3.Distance(posA, posB);
+        }
     }
 }
