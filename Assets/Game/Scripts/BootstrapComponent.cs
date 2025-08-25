@@ -15,30 +15,31 @@ namespace Game.Scripts
         
         private async void Awake()
         {
-            await Init();
+            using (new StopwatchScope("Bootstrap"))
+            {
+                await Init();
+            }
         }
         
         private async Task Init()
         {
-           
-            using (new StopwatchScope("Bootstrap"))
+            // Not necessary to explicitly init addressables but to keep init process clear lets do that
+            using (new StopwatchScope("Addressables.Init"))
             {
-                // Not necessary to explicitly init addressables but to keep init process clear lets do that
-                using (new StopwatchScope("Addressables.Init"))
-                {
-                    var handle = Addressables.InitializeAsync();
-                    await handle.Task;
-                }
-
-                using (new StopwatchScope("LoadingAssets"))
-                {
-                    await AddressableAssets.LoadAsync(_assets);
-                }
-                
-                var player = Instantiate(_assets.Boat.LoadedObject).GetComponent<Player>();
-                await _mapStreamer.Init(_assets, player.transform, _mapComponent);
-                await _mapNavigation.Init(player, _mapStreamer.Map, _mapComponent);
+                var handle = Addressables.InitializeAsync();
+                await handle.Task;
             }
+
+            using (new StopwatchScope("LoadingAssets"))
+            {
+                await AddressableAssets.LoadAsync(_assets);
+            }
+            
+            var player = Instantiate(_assets.Boat.LoadedObject).GetComponent<Player>();
+            
+            await _mapComponent.Init(_assets);
+            await _mapStreamer.Init(_assets, player.transform, _mapComponent);
+            await _mapNavigation.Init(player, _mapComponent);
         }
     }
 }

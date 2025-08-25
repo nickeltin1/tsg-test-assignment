@@ -48,18 +48,15 @@ namespace Game.Scripts
         [Tooltip("First happens the spawn task, second the cleanup. If set to parallel both will run at the same time")]
         [SerializeField] private OperationType _spawnAndCleanupOperationType = OperationType.Parallel;
         
-        [Header("Map")]
-        [SerializeField] private string _mapName = "maze";
-        [SerializeField, Range(0,1)] private float _decorationSpawnChance = 0.5f;
-        [SerializeField] private int _seed = 0;
+        
         
         private bool _initialized = false;
-        
         private AddressableAssets.Assets _assets;
         
-        private MapData _map;
+       
         private Transform _player;
         private MapComponent _mapComponent;
+        private MapData MapData => _mapComponent.MapData;
         
         private AsyncGameObjectPoolCollection _waterPool;
         private AsyncGameObjectPoolCollection _groundPool;
@@ -75,17 +72,13 @@ namespace Game.Scripts
         private Dictionary<AsyncGameObjectPool, List<SpawnRequest>> _poolToSpawnRequests;
         private Dictionary<int, TileInstance> _activeTiles;
 
-        public MapData Map => _map;
+       
 
         public async Task Init(AddressableAssets.Assets assets, Transform player, MapComponent mapComponent)
         {
             _mapComponent = mapComponent;
             _assets = assets;
             _player = player;
-            
-            
-            _map = _assets.Maps.FindMapByName(_mapName);
-            _map.InitRandomTilesState(_assets, _seed, _decorationSpawnChance);
 
             _waterPool = _assets.WaterTiles.CreateAsyncPools(_mapComponent.WaterParent);
             _groundPool = _assets.GroundTiles.CreateAsyncPools(_mapComponent.GroundParent);
@@ -115,7 +108,7 @@ namespace Game.Scripts
             // Here we have a difference between rects, that determines what tiles should be loaded and unloaded
             _lastStreamArea = _currentStreamArea;
             var playerCellPosition = _mapComponent.WorldToCell(_player.position);
-            _currentStreamArea = MapStreamingMath.CalculateActiveArea(playerCellPosition, _spawnRadius, _map.Width, _map.Height);
+            _currentStreamArea = MapStreamingMath.CalculateActiveArea(playerCellPosition, _spawnRadius, MapData.Width, MapData.Height);
             MapStreamingMath.CalculateAreaDifference(_lastStreamArea, _currentStreamArea, _addedAreas, _removedAreas);
 
             // Spawn new tiles and delete unused tiles in parallel since can afford that with our rect differences
@@ -145,7 +138,7 @@ namespace Game.Scripts
             {
                 foreach (var tilePosition in removedArea.allPositionsWithin)
                 {
-                    var tileIndex = _map.XYToIndex(tilePosition);
+                    var tileIndex = MapData.XYToIndex(tilePosition);
                     
                     if (!_activeTiles.TryGetValue(tileIndex, out var tileInstance))
                         continue;
@@ -177,13 +170,13 @@ namespace Game.Scripts
             {
                 foreach (var tilePosition in addedArea.allPositionsWithin)
                 {
-                    var tileIndex = _map.XYToIndex(tilePosition);
+                    var tileIndex = MapData.XYToIndex(tilePosition);
                     
                     if (_activeTiles.ContainsKey(tileIndex))
                         continue;
 
-                    _map.IndexToXY(tileIndex, out var position);
-                    var tile = _map[tileIndex];
+                    MapData.IndexToXY(tileIndex, out var position);
+                    var tile = MapData[tileIndex];
 
                     var pos = _mapComponent.CellToWorld(position);
 

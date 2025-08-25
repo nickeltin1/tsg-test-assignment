@@ -13,10 +13,10 @@ namespace Game.Scripts
         private void OnDrawGizmos()
         {
             if (!_drawGizmos) return; 
-            if (_mapComponent == null || _map == null) return;
+            if (_mapComponent == null || MapData == null) return;
 
             // full map outline (gray)
-            DrawAreaWire(new RectInt(0, 0, _map.Width, _map.Height), new Color(0.6f, 0.6f, 0.6f, 1f));
+            DrawAreaWire(new RectInt(0, 0, MapData.Width, MapData.Height), new Color(0.6f, 0.6f, 0.6f, 1f));
 
             // current / last outlines
             DrawAreaWire(_currentStreamArea, new Color(1f, 0.9f, 0.2f, 1f)); // yellow

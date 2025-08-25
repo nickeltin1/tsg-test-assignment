@@ -749,9 +749,6 @@ MonoBehaviour:
   _cleanupBatchCount: 500
   _spawnOperationType: 1
   _spawnAndCleanupOperationType: 1
-  _mapName: maze
-  _decorationSpawnChance: 0.5
-  _seed: 0
   _drawGizmos: 0
 --- !u!114 &650436099
 MonoBehaviour:
@@ -787,6 +784,9 @@ MonoBehaviour:
   _waterParent: {fileID: 1816533013}
   _groundParent: {fileID: 87964375}
   _decorParent: {fileID: 984177410}
+  _mapName: map1
+  _decorationSpawnChance: 0.5
+  _seed: 0
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0

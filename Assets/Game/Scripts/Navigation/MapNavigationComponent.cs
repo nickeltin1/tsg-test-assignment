@@ -12,22 +12,20 @@ namespace Game.Scripts.Navigation
 
         private bool _initialized;
         private Player _player;
-        private MapData _map;
         private Path _path;
         private Pathfinder _pathfinder;
         private MapComponent _mapComponent;
 
-        public async Task Init(Player player, MapData map, MapComponent mapComponent)
+        public async Task Init(Player player, MapComponent mapComponent)
         {
             _mapComponent = mapComponent;
-            _map = map;
             _player = player;
             _initialized = true;
             _path = new Path();
             _path.Updated += UpdatePathPreview;
             _selectedCell.Init();
             _player.SetPath(_path);
-            _pathfinder = new Pathfinder(_map, mapComponent, _path);
+            _pathfinder = new Pathfinder(mapComponent, _path);
             await Task.CompletedTask;
         }
 
@@ -41,7 +39,7 @@ namespace Game.Scripts.Navigation
                 var cell = _mapComponent.WorldToCell(hit.point);
 
                 var state = SelectedCellComponent.State.ValidSelection;
-                if (!_map.Contains(cell) || !_map.GetTile(cell).IsPassable)
+                if (!_mapComponent.MapData.Contains(cell) || !_mapComponent.MapData.GetTile(cell).IsPassable)
                     state = SelectedCellComponent.State.InvalidSelection;
 
                 var cellCenter = _mapComponent.CellToWorld(cell);
