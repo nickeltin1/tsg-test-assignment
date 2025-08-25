@@ -39,13 +39,15 @@ namespace Game.Scripts
         
         public Vector3 CellToWorld(Vector2Int position)
         {
-            return _grid.GetCellCenterWorld(new Vector3Int(position.x, position.y, 0));
+            // Y is inverted since map is loaded from file top to bottom
+            return _grid.GetCellCenterWorld(new Vector3Int(position.x, -position.y, 0));
         }
 
         public Vector2Int WorldToCell(Vector3 position)
         {
             var pos = _grid.WorldToCell(position);
-            return new Vector2Int(pos.x, pos.y);
+            // Y is inverted since map is loaded from file top to bottom
+            return new Vector2Int(pos.x, -pos.y);
         }
     }
 }
