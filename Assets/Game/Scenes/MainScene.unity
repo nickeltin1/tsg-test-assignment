@@ -859,7 +859,7 @@ MonoBehaviour:
   _waterParent: {fileID: 1816533013}
   _groundParent: {fileID: 87964375}
   _decorParent: {fileID: 984177410}
-  _mapName: map1
+  _mapName: maze
   _decorationSpawnChance: 0.5
   _seed: 0
 --- !u!1 &832575517

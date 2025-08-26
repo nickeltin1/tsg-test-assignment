@@ -15,12 +15,39 @@ namespace Game.Scripts.Navigation
         public class SearchTask
         {
             public Task Task;
-            // public 
+            public SearchState State;
+
+            public bool IsCompleted => (State == SearchState.Failed 
+                                     || State == SearchState.Cancelled 
+                                     || State == SearchState.Completed) 
+                                     && Task.IsCompleted;
+            
+            public Action<Node> OnNodeInspected;
+            public Action<SearchState> OnSearchEnded;
+            
+            public readonly CancellationTokenSource CancellationTokenSource;
+
+            public SearchTask()
+            {
+                CancellationTokenSource = new CancellationTokenSource();
+            }
+
+            public void Cancel() => CancellationTokenSource.Cancel();
+            
+            public void EndSearch(SearchState state)
+            {
+                State = state;
+                OnSearchEnded?.Invoke(State);
+            }
         }
         
-        public enum SearchResult
+        public enum SearchState
         {
-            
+            None,
+            Searching,
+            Cancelled,
+            Completed,
+            Failed
         }
         
         public struct Node
@@ -47,8 +74,7 @@ namespace Game.Scripts.Navigation
         
         private readonly MapComponent _mapComponent;
         private readonly Path _outputPath;
-        private Task _searchTask;
-        private CancellationToken _cancellationToken;
+        private SearchTask _searchTask;
 
         public Pathfinder(MapComponent mapComponent, Path outputPath)
         {
@@ -56,23 +82,26 @@ namespace Game.Scripts.Navigation
             _outputPath = outputPath;
         }
 
-        public void RequestSearch(Vector2Int from, Vector2Int to, Action<Node> onNodeInspected, Action<bool> onSearchEnded, bool yield, CancellationToken cancellationToken)
+        public async Task<SearchTask> RequestSearchAsync(Vector2Int from, Vector2Int to, bool yield)
         {
             if (_searchTask != null && !_searchTask.IsCompleted)
             {
-                Debug.Log("Canceling previous search task");
-                _cancellationToken = new CancellationToken(true);
-                // _outputPath.StopBuilding();
+                _searchTask.Cancel();
+                try { await _searchTask.Task; } catch { /* cancelled or faulted */ }
             }
+            _searchTask = Search(from, to, yield);
+            return _searchTask;
+        }
 
-            using (new StopwatchScope("Pathfinder.Search"))
-            {
-                _cancellationToken = cancellationToken;
-                _searchTask = Search(from, to, onNodeInspected, onSearchEnded, yield);
-            }
+        public SearchTask Search(Vector2Int from, Vector2Int to, bool yield)
+        {
+            var searchTask = new SearchTask();
+            searchTask.Task = Search(from, to, searchTask, yield);
+            searchTask.State = SearchState.Searching;
+            return searchTask;
         }
         
-        private async Task Search(Vector2Int from, Vector2Int to, Action<Node> onNodeInspected, Action<bool> onSearchEnded, bool yield)
+        private async Task Search(Vector2Int from, Vector2Int to, SearchTask searchTask, bool yield)
         {
             // var path = HexPathfindingOld.FindPath(_mapComponent, from, to);
             // _outputPath.Clear();
@@ -91,24 +120,25 @@ namespace Game.Scripts.Navigation
             
             _outputPath.StartBuilding();
             _outputPath.PushPoint(GetWorldPosition(startNode));
-
+            
             while (path.Count > 0)
             {
-                if (_cancellationToken.IsCancellationRequested)
-                {
-                    _outputPath.StopBuilding();
-                    onSearchEnded?.Invoke(false);
-                    return;   
-                }
-                
                 var node = path.Peek();
-                onNodeInspected?.Invoke(node);
+                
+                searchTask.OnNodeInspected?.Invoke(node);
+
+                if (searchTask.CancellationTokenSource.IsCancellationRequested)
+                {
+                    searchTask.EndSearch(SearchState.Cancelled);
+                    _outputPath.StopBuilding();
+                    return;
+                }
                 
                 // Path completed
                 if (node.Index == destIndex)
                 {
+                    searchTask.EndSearch(SearchState.Completed);
                     _outputPath.StopBuilding();
-                    onSearchEnded?.Invoke(true);
                     return;
                 }
 
@@ -175,9 +205,9 @@ namespace Game.Scripts.Navigation
                 }
             }
             
-            onSearchEnded?.Invoke(false);
-            _outputPath.StartBuilding();
+            _outputPath.StopBuilding();
             _outputPath.Clear();
+            searchTask.EndSearch(SearchState.Failed);
         }
 
         private float3 GetWorldPosition(Node node)
