@@ -78,6 +78,8 @@ namespace Game.Scripts.Navigation
                 }
             }
         }
+        
+        
 
         private async void FindPath(Vector2Int cell)
         {

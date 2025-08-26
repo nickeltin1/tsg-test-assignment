@@ -78,6 +78,7 @@ namespace Game.Scripts.Navigation
 
         public Pathfinder(MapComponent mapComponent, Path outputPath)
         {
+             
             _mapComponent = mapComponent;
             _outputPath = outputPath;
         }
@@ -95,6 +96,7 @@ namespace Game.Scripts.Navigation
 
         public SearchTask Search(Vector2Int from, Vector2Int to, bool yield)
         {
+            
             var searchTask = new SearchTask();
             searchTask.Task = Search(from, to, searchTask, yield);
             searchTask.State = SearchState.Searching;
