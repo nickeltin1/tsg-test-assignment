@@ -83,19 +83,19 @@ namespace Game.Scripts.Navigation
 
         private async void FindPath(Vector2Int cell)
         {
-            _pathfindVisualizationCell.gameObject.SetActive(true);
-            var searchTask = await _pathfinder.RequestSearchAsync(_mapComponent.WorldToCell(_player.transform.position), cell, true);
+            // _pathfindVisualizationCell.gameObject.SetActive(true);
+            var searchTask = await _pathfinder.RequestSearchAsync(_mapComponent.WorldToCell(_player.transform.position), cell, false);
             
-            searchTask.OnNodeInspected += node =>
-            {
-                _pathfindVisualizationCell.Refresh(_mapComponent.CellToWorld(node.Position),
-                    SelectedCellComponent.State.SearchingPath);
-            };
-
-            searchTask.OnSearchEnded += state =>
-            {
-                _pathfindVisualizationCell.gameObject.SetActive(false);
-            };
+            // searchTask.OnNodeInspected += node =>
+            // {
+            //     _pathfindVisualizationCell.Refresh(_mapComponent.CellToWorld(node),
+            //         SelectedCellComponent.State.SearchingPath);
+            // };
+            //
+            // searchTask.OnSearchEnded += state =>
+            // {
+            //     _pathfindVisualizationCell.gameObject.SetActive(false);
+            // };
         }
     }
 }

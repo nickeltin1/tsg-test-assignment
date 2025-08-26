@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace Game.Scripts.Navigation
@@ -17,14 +16,14 @@ namespace Game.Scripts.Navigation
             public Task Task;
             public SearchState State;
 
-            public bool IsCompleted => (State == SearchState.Failed 
-                                     || State == SearchState.Cancelled 
-                                     || State == SearchState.Completed) 
-                                     && Task.IsCompleted;
-            
-            public Action<Node> OnNodeInspected;
+            public bool IsCompleted => (State == SearchState.Failed
+                                        || State == SearchState.Cancelled
+                                        || State == SearchState.Completed)
+                                       && Task.IsCompleted;
+
+            public Action<Vector2Int> OnNodeInspected;
             public Action<SearchState> OnSearchEnded;
-            
+
             public readonly CancellationTokenSource CancellationTokenSource;
 
             public SearchTask()
@@ -32,15 +31,18 @@ namespace Game.Scripts.Navigation
                 CancellationTokenSource = new CancellationTokenSource();
             }
 
-            public void Cancel() => CancellationTokenSource.Cancel();
-            
+            public void Cancel()
+            {
+                CancellationTokenSource.Cancel();
+            }
+
             public void EndSearch(SearchState state)
             {
                 State = state;
                 OnSearchEnded?.Invoke(State);
             }
         }
-        
+
         public enum SearchState
         {
             None,
@@ -49,36 +51,45 @@ namespace Game.Scripts.Navigation
             Completed,
             Failed
         }
-        
-        public struct Node
+
+        private enum NodeState : byte
         {
-            public readonly bool IsValid;
-            
-            public readonly int Index;
-            public readonly Vector2Int Position;
-
-            public float DistanceFromStart;
-            public float DistanceToGoal;
-            
-            public float TotalDistance => DistanceFromStart + DistanceToGoal;
-
-            public Node(int index, Vector2Int position)
-            {
-                Index = index;
-                Position = position;
-                DistanceFromStart = 0;
-                DistanceToGoal = 0;
-                IsValid = true;
-            }
+            Unseen = 0,
+            Open = 1,
+            Closed = 2
         }
+
+        private struct NodeData
+        {
+            public float G;
+            public int Parent;
+            public NodeState State;
+            public int Gen;
+        }
+
+        private NodeData[] _nodes;
+        private int _gen;
         
+
+        private float GetG(int index)
+        {
+            return _nodes[index].Gen == _gen ? _nodes[index].G : float.PositiveInfinity;
+        }
+
+        private void EnsureBuffers()
+        {
+            // Change this accessor to whatever your MapData exposes (Length/Count/TileCount, etc.)
+            var n = _mapComponent.MapData.Length;
+            if (_nodes == null || _nodes.Length != n)
+                _nodes = new NodeData[n];
+        }
+
         private readonly MapComponent _mapComponent;
         private readonly Path _outputPath;
         private SearchTask _searchTask;
 
         public Pathfinder(MapComponent mapComponent, Path outputPath)
         {
-             
             _mapComponent = mapComponent;
             _outputPath = outputPath;
         }
@@ -88,139 +99,155 @@ namespace Game.Scripts.Navigation
             if (_searchTask != null && !_searchTask.IsCompleted)
             {
                 _searchTask.Cancel();
-                try { await _searchTask.Task; } catch { /* cancelled or faulted */ }
+                try
+                {
+                    await _searchTask.Task;
+                }
+                catch
+                {
+                    /* cancelled or faulted */
+                }
             }
+
             _searchTask = Search(from, to, yield);
             return _searchTask;
         }
 
-        public SearchTask Search(Vector2Int from, Vector2Int to, bool yield)
+        private SearchTask Search(Vector2Int from, Vector2Int to, bool yield)
         {
-            
             var searchTask = new SearchTask();
             searchTask.Task = Search(from, to, searchTask, yield);
             searchTask.State = SearchState.Searching;
             return searchTask;
         }
-        
+
         private async Task Search(Vector2Int from, Vector2Int to, SearchTask searchTask, bool yield)
         {
-            // var path = HexPathfindingOld.FindPath(_mapComponent, from, to);
-            // _outputPath.Clear();
-            // _outputPath.AddPoints(path.Select(tile => (float3)_mapComponent.CellToWorld(tile.Position)));
+            EnsureBuffers();
+            _gen++;
+
+            var start = _mapComponent.MapData.XYToIndex(from);
+            var goal = _mapComponent.MapData.XYToIndex(to);
             
-            var destIndex = _mapComponent.MapData.XYToIndex(to);
-            var startNode = CreateNode(from);
-            startNode.DistanceToGoal = _mapComponent.DistanceBetweenCells(from, to);
-            
-            var path = new Stack<Node>();
-            var onPath = new HashSet<int>(); 
-            var closed = new HashSet<int>();
-            
-            path.Push(startNode);
-            onPath.Add(startNode.Index);
-            
+            var node = _nodes[start];
+            node.Gen = _gen;
+            node.G = 0f;
+            node.Parent = -1;
+            node.State = NodeState.Open;
+            _nodes[start] = node;
+
+            // OPEN set, ordered by (f, then h) — lexicographic via ValueTuple comparer
+            var open = new PriorityQueue<int, (float f, float h)>();
+            var h0 = _mapComponent.DistanceBetweenCells(from, to);
+            open.Enqueue(start, (h0, h0));
+
             _outputPath.StartBuilding();
-            _outputPath.PushPoint(GetWorldPosition(startNode));
-            
-            while (path.Count > 0)
+            _outputPath.Clear();
+
+            var iter = 0;
+
+            try
             {
-                var node = path.Peek();
-                
-                searchTask.OnNodeInspected?.Invoke(node);
+                while (open.Count > 0)
+                {
+                    if (yield && (iter++ & 63) == 0) await Task.Yield();
 
-                if (searchTask.CancellationTokenSource.IsCancellationRequested)
-                {
-                    searchTask.EndSearch(SearchState.Cancelled);
-                    _outputPath.StopBuilding();
-                    return;
-                }
-                
-                // Path completed
-                if (node.Index == destIndex)
-                {
-                    searchTask.EndSearch(SearchState.Completed);
-                    _outputPath.StopBuilding();
-                    return;
-                }
-
-                var neighborOffsets = HexPathfindingMath.GetCellNeighborOffsets(node.Position);
-                Node bestNeighbor = default;
-                bestNeighbor.DistanceToGoal = float.MaxValue;
-                foreach (var offset in neighborOffsets)
-                {
-                    var neighborPosition = node.Position + offset;
-                    
-                    // Neighbor is not in map bounds
-                    if (!_mapComponent.MapData.Contains(neighborPosition))
-                        continue;
-                    
-                    var neighborIndex = _mapComponent.MapData.XYToIndex(neighborPosition);
-                    
-                    // Skin nodes that is already on path
-                    if (onPath.Contains(neighborIndex))
-                        continue;
-                    
-                    // This cell was already inspected and appeared to be a dead end
-                    if (closed.Contains(neighborIndex))
-                        continue;
-                    
-                    var tile = _mapComponent.MapData[neighborIndex];
-                    if (!tile.IsPassable)
-                        continue;
-                    
-                    var neighbor = CreateNode(neighborPosition);
-                    
-                    var distanceToNeighbor = _mapComponent.DistanceBetweenCells(node.Position, neighborPosition);
-                    var distanceToGoal = _mapComponent.DistanceBetweenCells(to, neighborPosition);
-                    
-                    
-                    neighbor.DistanceFromStart = node.DistanceFromStart + distanceToNeighbor;
-                    neighbor.DistanceToGoal = distanceToGoal;
-                    
-                    
-                    if (!bestNeighbor.IsValid
-                        || neighbor.TotalDistance < bestNeighbor.TotalDistance
-                        || (Mathf.Approximately(neighbor.TotalDistance, bestNeighbor.TotalDistance)
-                            && neighbor.DistanceToGoal < bestNeighbor.DistanceToGoal))
+                    if (searchTask.CancellationTokenSource.IsCancellationRequested)
                     {
-                        bestNeighbor = neighbor;
+                        searchTask.EndSearch(SearchState.Cancelled);
+                        _outputPath.StopBuilding();
+                        return;
                     }
 
+                    var currentIndex = open.Dequeue();
+                    var currentNode = _nodes[currentIndex];
 
-                    if (yield) await Task.Yield();
+                    // Skip stale entries (already closed or from older gen)
+                    if (currentNode.Gen != _gen || currentNode.State == NodeState.Closed)
+                        continue;
+
+                    currentNode.State = NodeState.Closed;
+                    _nodes[currentIndex] = currentNode;
+
+                    var currentPosition = _mapComponent.MapData[currentIndex].Position;
+                    searchTask.OnNodeInspected?.Invoke(currentPosition);
+
+                    // Goal reached — reconstruct final path once
+                    if (currentIndex == goal)
+                    {
+                        var stack = new Stack<int>();
+                        for (var index = currentIndex; index != -1; index = _nodes[index].Parent) stack.Push(index);
+
+                        while (stack.Count > 0)
+                        {
+                            var index = stack.Pop();
+                            var position = _mapComponent.MapData[index].Position;
+                            _outputPath.PushPoint(_mapComponent.CellToWorld(position)); // returns float3
+                        }
+
+                        _outputPath.StopBuilding();
+                        searchTask.EndSearch(SearchState.Completed);
+                        return;
+                    }
+
+                    // Expand neighbors
+                    foreach (var offset in HexPathfindingMath.GetCellNeighborOffsets(currentPosition))
+                    {
+                        if (yield && (iter++ & 63) == 0) await Task.Yield();
+
+                        if (searchTask.CancellationTokenSource.IsCancellationRequested)
+                        {
+                            searchTask.EndSearch(SearchState.Cancelled);
+                            _outputPath.StopBuilding();
+                            return;
+                        }
+
+                        var neighborPosition = currentPosition + offset;
+                        if (!_mapComponent.MapData.Contains(neighborPosition)) continue;
+
+                        var neighborIndex = _mapComponent.MapData.XYToIndex(neighborPosition);
+
+                        var tile = _mapComponent.MapData[neighborIndex];
+                        if (!tile.IsPassable) continue;
+
+                        var neighborNode = _nodes[neighborIndex];
+                        
+                        if (neighborNode.Gen != _gen)
+                        {
+                            neighborNode.Gen = _gen;
+                            neighborNode.G = float.PositiveInfinity;
+                            neighborNode.Parent = -1;
+                            neighborNode.State = NodeState.Unseen;
+                        }
+
+                        if (neighborNode.State == NodeState.Closed)
+                            continue;
+
+                        var tentativeG = GetG(currentIndex) + _mapComponent.DistanceBetweenCells(currentPosition, neighborPosition);
+                        if (tentativeG >= neighborNode.G) continue; // not a better path
+
+                        neighborNode.G = tentativeG;
+                        neighborNode.Parent = currentIndex;
+                        neighborNode.State = NodeState.Open;
+                        _nodes[neighborIndex] = neighborNode; 
+
+                        var h = _mapComponent.DistanceBetweenCells(neighborPosition, to);
+                        var f = tentativeG + h;
+
+                        open.Enqueue(neighborIndex, (f, h));
+                    }
                 }
 
-                // No neighbors found, dead end, backtrack
-                if (!bestNeighbor.IsValid)
-                {
-                    path.Pop();
-                    onPath.Remove(node.Index);
-                    closed.Add(node.Index);
-                    _outputPath.PopPoint();
-                }
-                else
-                {
-                    path.Push(bestNeighbor);
-                    onPath.Add(bestNeighbor.Index);
-                    _outputPath.PushPoint(GetWorldPosition(bestNeighbor));
-                }
+                // No path found
+                _outputPath.StopBuilding();
+                _outputPath.Clear();
+                searchTask.EndSearch(SearchState.Failed);
             }
-            
-            _outputPath.StopBuilding();
-            _outputPath.Clear();
-            searchTask.EndSearch(SearchState.Failed);
-        }
-
-        private float3 GetWorldPosition(Node node)
-        {
-            return _mapComponent.CellToWorld(node.Position);
-        }
-        
-        private Node CreateNode(Vector2Int pos)
-        {
-            var tile = _mapComponent.MapData.GetTile(pos);
-            return new Node(tile.Index, tile.Position);
+            finally
+            {
+                // Safe even if already stopped
+                _outputPath.StopBuilding();
+            }
         }
     }
 }
