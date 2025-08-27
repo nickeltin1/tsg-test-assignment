@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -24,7 +25,7 @@ namespace Game.Scripts.Navigation
             _player = player;
             
             _path = new Path();
-            // _path.Updated += UpdatePathPreview;
+            _path.Updated += UpdateFullPath;
             _path.BuildStarted += PathOnBuildStarted;
             _path.PointPushed += PathOnPointPushed;
             _path.PointPopped += PathOnPointPopped;
@@ -32,7 +33,7 @@ namespace Game.Scripts.Navigation
             _selectedCell.Init();
             _pathfindVisualizationCell.Init();
             _player.SetPath(_path);
-            _pathfinder = new Pathfinder(mapComponent, _path);
+            _pathfinder = new Pathfinder(mapComponent, _path, destroyCancellationToken);
             _initialized = true;
             await Task.CompletedTask;
         }
@@ -47,6 +48,17 @@ namespace Game.Scripts.Navigation
             _pathRenderer.positionCount++;
             pos.y = _pathRenderer.transform.position.y;
             _pathRenderer.SetPosition(_pathRenderer.positionCount - 1, pos);
+        }
+        
+        private void UpdateFullPath()
+        {
+            _pathRenderer.positionCount = _path.Count;
+            for (var index = 0; index < _path.Count; index++)
+            {
+                var pos = _path[index];
+                pos.y = _pathRenderer.transform.position.y;
+                _pathRenderer.SetPosition(index, pos);
+            }
         }
 
         private void PathOnBuildStarted()
@@ -84,7 +96,12 @@ namespace Game.Scripts.Navigation
         private async void FindPath(Vector2Int cell)
         {
             // _pathfindVisualizationCell.gameObject.SetActive(true);
-            var searchTask = await _pathfinder.RequestSearchAsync(_mapComponent.WorldToCell(_player.transform.position), cell, false);
+            var searchTask = await _pathfinder.RequestSearchAsync(_mapComponent.WorldToCell(_player.transform.position), cell);
+            // var tiles = HexPathfindingOld.FindPath(_mapComponent, _mapComponent.WorldToCell(_player.transform.position), cell);
+            // _path.Clear();
+            // _path.SetPoints(tiles.Select(tile => (float3)_mapComponent.CellToWorld(tile.Position)));
+            
+            _player.ResetPathDistance();
             
             // searchTask.OnNodeInspected += node =>
             // {
