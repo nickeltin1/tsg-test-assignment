@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Mathematics;
 using Unity.Profiling;
 using UnityEngine;
+using UnityEngine.Pool;
+using UnityEngine.Splines;
 
 namespace Game.Scripts.Navigation
 {
@@ -18,8 +21,6 @@ namespace Game.Scripts.Navigation
             public static ProfilerMarker EnsureBuffers = new("EnsureBuffers");
             public static ProfilerMarker ReconstructPath = new("ReconstructPath");
             public static ProfilerMarker OpenNodesEnqueue = new("OpenNodesEnqueue");
-            public static ProfilerMarker PushPointsToPath = new("PushPointsToPath");
-            
         }
         
         /// <summary>
@@ -206,7 +207,7 @@ namespace Game.Scripts.Navigation
                 // Path found, reconstructing
                 if (currentIndex == goal)
                 {
-                    await ReconstructPath(currentIndex, searchTask.CancellationTokenSource.Token);
+                    ReconstructPath(currentIndex);
                     searchTask.EndSearch(SearchState.Completed);
                     return;
                 }
@@ -268,36 +269,44 @@ namespace Game.Scripts.Navigation
         /// If updating path all at once it will take about 70ms with around 900 nodes path.
         /// This is considerable spike, so spreading out actual path reconstruction (and pushing to spline) across frames.
         /// </summary>
-        private async Task ReconstructPath(int currentIndex, CancellationToken cancellationToken)
+        private void ReconstructPath(int currentIndex)
         {
             // Can't use profiler markers with Task.Yield() since task can resume on different thread.
-            // Profiling.ReconstructPath.Begin();
-         
-            var stack = new Stack<int>();
-            for (var index = currentIndex; index != -1; index = _nodes[index].Parent) stack.Push(index);
+            Profiling.ReconstructPath.Begin();
 
-            _outputPath.StartBuilding();
-            while (stack.Count > 0)
+            var positions = ListPool<BezierKnot>.Get();
+            // var stack = new Stack<int>();
+            for (var index = currentIndex; index != -1; index = _nodes[index].Parent)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    _outputPath.StopBuilding();
-                    _outputPath.Clear();
-                    // Profiling.ReconstructPath.End();
-                    return;
-                }
-
-                var index = stack.Pop();
-                var position = _mapComponent.MapData[index].Position;
-                Profiling.PushPointsToPath.Begin();
-                _outputPath.PushPoint(_mapComponent.CellToWorld(position));
-                Profiling.PushPointsToPath.End();
-                await Task.Yield();
+                var cell = _mapComponent.MapData[index].Position;
+                var worldPosition = _mapComponent.CellToWorld(cell);
+                positions.Add(new BezierKnot(worldPosition));
             }
-
-            _outputPath.StopBuilding();
             
-            // Profiling.ReconstructPath.End();
+            positions.Reverse();
+            
+            _outputPath.SetPoints(positions);
+            
+            ListPool<BezierKnot>.Release(positions);
+            // _outputPath.StartBuilding();
+            // while (stack.Count > 0)
+            // {
+            //     if (cancellationToken.IsCancellationRequested)
+            //     {
+            //         // _outputPath.StopBuilding();
+            //         // _outputPath.Clear();
+            //         // Profiling.ReconstructPath.End();
+            //         return;
+            //     }
+            //
+            //     var index = stack.Pop();
+            //     var position = _mapComponent.MapData[index].Position;
+            //     // _outputPath.PushPoint(_mapComponent.CellToWorld(position));
+            //     // await Task.Yield();
+            // }
+            // _outputPath.StopBuilding();
+            
+            Profiling.ReconstructPath.End();
         }
     }
 }

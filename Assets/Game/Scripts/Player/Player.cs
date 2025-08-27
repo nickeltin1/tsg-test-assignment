@@ -35,7 +35,7 @@ namespace Game.Scripts
             EvaluatePosition(_distance);
             
             _distance += _movementSpeed * Time.deltaTime;
-            _distance = math.clamp(_distance, 0f, _path.Length);
+            _distance = Mathf.Clamp(_distance, 0f, _path.Length);
         }
 
         private void EvaluatePosition(float distance)

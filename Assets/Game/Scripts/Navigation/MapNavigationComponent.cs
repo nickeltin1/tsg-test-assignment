@@ -26,9 +26,9 @@ namespace Game.Scripts.Navigation
             
             _path = new Path();
             _path.Updated += UpdateFullPath;
-            _path.BuildStarted += PathOnBuildStarted;
-            _path.PointPushed += PathOnPointPushed;
-            _path.PointPopped += PathOnPointPopped;
+            // _path.BuildStarted += PathOnBuildStarted;
+            // _path.PointPushed += PathOnPointPushed;
+            // _path.PointPopped += PathOnPointPopped;
             
             _selectedCell.Init();
             _pathfindVisualizationCell.Init();
@@ -38,18 +38,6 @@ namespace Game.Scripts.Navigation
             await Task.CompletedTask;
         }
 
-        private void PathOnPointPopped()
-        {
-            _pathRenderer.positionCount--;
-        }
-
-        private void PathOnPointPushed(float3 pos)
-        {
-            _pathRenderer.positionCount++;
-            pos.y = _pathRenderer.transform.position.y;
-            _pathRenderer.SetPosition(_pathRenderer.positionCount - 1, pos);
-        }
-        
         private void UpdateFullPath()
         {
             _pathRenderer.positionCount = _path.Count;
@@ -60,11 +48,23 @@ namespace Game.Scripts.Navigation
                 _pathRenderer.SetPosition(index, pos);
             }
         }
-
-        private void PathOnBuildStarted()
-        {
-            _pathRenderer.positionCount = 0;
-        }
+        
+        // private void PathOnPointPopped()
+        // {
+        //     _pathRenderer.positionCount--;
+        // }
+        //
+        // private void PathOnPointPushed(float3 pos)
+        // {
+        //     _pathRenderer.positionCount++;
+        //     pos.y = _pathRenderer.transform.position.y;
+        //     _pathRenderer.SetPosition(_pathRenderer.positionCount - 1, pos);
+        // }
+        //
+        // private void PathOnBuildStarted()
+        // {
+        //     _pathRenderer.positionCount = 0;
+        // }
 
         private void Update()
         {
