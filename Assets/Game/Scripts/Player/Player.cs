@@ -42,9 +42,12 @@ namespace Game.Scripts
         {
             _path.EvaluateAtDistance(distance, out var position, out var tangent, out var up);
             transform.position = position;
-            if (((Vector3)tangent).sqrMagnitude > 0.001)
+            var dir = (Vector3)tangent;
+            if (dir.sqrMagnitude > 0)
             {
-                _model.rotation = Quaternion.LookRotation(tangent, up);
+                var targetRot = Quaternion.LookRotation(dir.normalized, up);
+                var t = _rotationLerp * Time.deltaTime;
+                _model.rotation = Quaternion.Slerp(_model.rotation, targetRot, t);
             }
         }
     }

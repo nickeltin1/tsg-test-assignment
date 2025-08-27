@@ -96,11 +96,8 @@ namespace Game.Scripts.Navigation
         private async void FindPath(Vector2Int cell)
         {
             // _pathfindVisualizationCell.gameObject.SetActive(true);
-            var searchTask = await _pathfinder.RequestSearchAsync(_mapComponent.WorldToCell(_player.transform.position), cell);
-            // var tiles = HexPathfindingOld.FindPath(_mapComponent, _mapComponent.WorldToCell(_player.transform.position), cell);
-            // _path.Clear();
-            // _path.SetPoints(tiles.Select(tile => (float3)_mapComponent.CellToWorld(tile.Position)));
             
+            var searchTask = await _pathfinder.RequestSearchAsync(_mapComponent.WorldToCell(_player.transform.position), cell);
             _player.ResetPathDistance();
             
             // searchTask.OnNodeInspected += node =>
